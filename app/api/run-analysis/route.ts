@@ -50,7 +50,8 @@ async function processItem(
       profit_min_percent: params.profit_min_percent,
       selling_fee_percent: params.selling_fee_percent,
       max_items: 0,
-      days_until_close: 0
+      start_date: '',
+      end_date: ''
     });
 
     // Check if meets profit criteria
