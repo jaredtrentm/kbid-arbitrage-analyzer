@@ -50,7 +50,15 @@ export default function Home() {
         })
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setError(`Server error: ${text.substring(0, 200)}`);
+        setStep('idle');
+        return;
+      }
 
       if (!data.success) {
         setError(data.error || 'Failed to scrape items');
@@ -91,7 +99,15 @@ export default function Home() {
         })
       });
 
-      const data: AnalysisResponse = await response.json();
+      const text = await response.text();
+      let data: AnalysisResponse;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setError(`Server error: ${text.substring(0, 200)}`);
+        setStep('scraped');
+        return;
+      }
 
       if (!data.success && data.error) {
         setError(data.error);

@@ -46,16 +46,18 @@ async function fetchWithRetry(url: string, retries = 2): Promise<string> {
           'Accept-Language': 'en-US,en;q=0.5',
         },
       });
+      const text = await response.text();
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
       }
-      return await response.text();
+      return text;
     } catch (error) {
+      console.error(`Fetch attempt ${i + 1} failed for ${url}:`, error);
       if (i === retries) throw error;
       await new Promise(r => setTimeout(r, 1000));
     }
   }
-  throw new Error('Fetch failed');
+  throw new Error('Fetch failed after retries');
 }
 
 // Parse datetime strings and return Date object + display string

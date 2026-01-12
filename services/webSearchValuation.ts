@@ -30,10 +30,16 @@ async function searchSerper(query: string): Promise<SerperResult> {
   });
 
   if (!response.ok) {
-    throw new Error(`Serper API error: ${response.status}`);
+    const text = await response.text();
+    throw new Error(`Serper API error: ${response.status} - ${text.substring(0, 100)}`);
   }
 
-  return response.json();
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Serper returned invalid JSON: ${text.substring(0, 100)}`);
+  }
 }
 
 export async function getValuation(item: ParsedItem): Promise<ValuationResult> {
