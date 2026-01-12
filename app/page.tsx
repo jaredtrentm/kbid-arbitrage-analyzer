@@ -10,6 +10,7 @@ import { AnalysisParams, AnalysisResponse, RawKBidItem, AnalyzedItem } from '@/l
 const BATCH_SIZE = 25;
 
 type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing';
+type RiskFilter = 'all' | 'low' | 'medium' | 'high';
 
 export default function Home() {
   const [step, setStep] = useState<WorkflowStep>('idle');
@@ -25,6 +26,9 @@ export default function Home() {
 
   // Store params for batch analysis
   const [currentParams, setCurrentParams] = useState<AnalysisParams | null>(null);
+
+  // Risk filter
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
 
   const handleScrape = async (params: AnalysisParams) => {
     setStep('scraping');
@@ -153,12 +157,26 @@ export default function Home() {
     setSummary({ totalScraped: 0, totalAnalyzed: 0, totalProfitable: 0, errors: 0 });
     setCurrentParams(null);
     setError(null);
+    setRiskFilter('all');
   };
 
   const isLoading = step === 'scraping' || step === 'analyzing';
   const hasMoreBatches = rawItems.length > 0 && (batchIndex * BATCH_SIZE) < rawItems.length;
   const analyzedCount = batchIndex * BATCH_SIZE;
   const nextBatchEnd = Math.min((batchIndex + 1) * BATCH_SIZE, rawItems.length);
+
+  // Filter items by risk level
+  const filteredItems = riskFilter === 'all'
+    ? analyzedItems
+    : analyzedItems.filter(item => item.resale.riskScore === riskFilter);
+
+  // Count items by risk level
+  const riskCounts = {
+    all: analyzedItems.length,
+    low: analyzedItems.filter(i => i.resale.riskScore === 'low').length,
+    medium: analyzedItems.filter(i => i.resale.riskScore === 'medium').length,
+    high: analyzedItems.filter(i => i.resale.riskScore === 'high').length,
+  };
 
   return (
     <main className="min-h-screen bg-gray-100">
@@ -261,7 +279,7 @@ export default function Home() {
         {/* Results */}
         {analyzedItems.length > 0 && step !== 'analyzing' && (
           <div>
-            <div className="flex flex-row justify-between items-center gap-2 mb-3 sm:mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 sm:mb-4">
               <div className="text-xs sm:text-sm text-gray-600">
                 <strong>{summary.totalProfitable}</strong> profitable
                 <span className="hidden sm:inline"> of {summary.totalAnalyzed} analyzed ({summary.totalScraped} scraped)</span>
@@ -273,7 +291,37 @@ export default function Home() {
                 Export CSV
               </button>
             </div>
-            <ResultsGrid items={analyzedItems} />
+
+            {/* Risk Filter */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className="text-xs sm:text-sm text-gray-500 self-center mr-1">Risk:</span>
+              {(['all', 'low', 'medium', 'high'] as RiskFilter[]).map((level) => {
+                const isActive = riskFilter === level;
+                const colorClasses = {
+                  all: isActive ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                  low: isActive ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200',
+                  medium: isActive ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+                  high: isActive ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200',
+                };
+                return (
+                  <button
+                    key={level}
+                    onClick={() => setRiskFilter(level)}
+                    className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${colorClasses[level]}`}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)} ({riskCounts[level]})
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredItems.length > 0 ? (
+              <ResultsGrid items={filteredItems} />
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-600">
+                No {riskFilter} risk items found.
+              </div>
+            )}
           </div>
         )}
 
