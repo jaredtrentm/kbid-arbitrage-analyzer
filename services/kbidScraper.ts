@@ -35,17 +35,23 @@ function isClosed(text: string): boolean {
   return closedPatterns.some(pattern => pattern.test(text));
 }
 
-// Fetch with retry logic
-async function fetchWithRetry(url: string, retries = 2): Promise<string> {
+// Fetch with retry logic and timeout
+async function fetchWithRetry(url: string, retries = 1): Promise<string> {
   for (let i = 0; i <= retries; i++) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
         },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
       const text = await response.text();
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
@@ -54,7 +60,7 @@ async function fetchWithRetry(url: string, retries = 2): Promise<string> {
     } catch (error) {
       console.error(`Fetch attempt ${i + 1} failed for ${url}:`, error);
       if (i === retries) throw error;
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 500));
     }
   }
   throw new Error('Fetch failed after retries');
@@ -372,9 +378,9 @@ export async function scrapeKBid(maxItems: number, startDate: string, endDate: s
     const openAuctions = auctions.filter(a => a.endDateTime === null || a.endDateTime > now);
     const auctionsToScrape = filteredAuctions.length > 0 ? filteredAuctions : openAuctions.slice(0, 10);
 
-    // Step 3: Scrape items from each auction (increased limit to 10)
+    // Step 3: Scrape items from each auction (limit to 5 for Hobby plan timeout)
     const allItems: RawKBidItem[] = [];
-    const maxAuctions = Math.min(auctionsToScrape.length, 10); // Increased from 5 to 10
+    const maxAuctions = Math.min(auctionsToScrape.length, 5);
 
     for (let i = 0; i < maxAuctions && allItems.length < maxItems; i++) {
       const auction = auctionsToScrape[i];
@@ -385,7 +391,7 @@ export async function scrapeKBid(maxItems: number, startDate: string, endDate: s
 
       // Small delay between auction fetches
       if (i < maxAuctions - 1) {
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 100));
       }
     }
 
