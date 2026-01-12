@@ -72,11 +72,11 @@ export default function ResultCard({ data }: Props) {
         {/* Price grid - 2x2 on mobile */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs sm:text-sm mb-2 sm:mb-3">
           <div className="flex justify-between">
-            <span className="text-gray-500">Bid:</span>
+            <span className="text-gray-500">Current:</span>
             <span className="font-medium text-gray-900">${item.currentBid.toFixed(0)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Max:</span>
+            <span className="text-gray-500">Max Bid:</span>
             <span className="font-medium text-blue-600">${profit.maxBid.toFixed(0)}</span>
           </div>
           <div className="flex justify-between">

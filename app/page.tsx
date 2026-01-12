@@ -41,7 +41,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           max_items: params.max_items,
-          days_until_close: params.days_until_close
+          start_date: params.start_date,
+          end_date: params.end_date
         })
       });
 

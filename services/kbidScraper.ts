@@ -7,6 +7,34 @@ interface AuctionInfo {
   endDateTimeStr: string | null;
 }
 
+// Extract current bid from text patterns
+function extractCurrentBid(text: string): number | null {
+  // Pattern: "Current Bid: $XX.XX" or "Current Bid $XX.XX"
+  const bidMatch = text.match(/current\s*bid[:\s]*\$?([\d,]+(?:\.\d{2})?)/i);
+  if (bidMatch) {
+    return parseFloat(bidMatch[1].replace(/,/g, ''));
+  }
+  // Fallback: look for dollar amounts
+  const dollarMatch = text.match(/\$([\d,]+(?:\.\d{2})?)/);
+  if (dollarMatch) {
+    return parseFloat(dollarMatch[1].replace(/,/g, ''));
+  }
+  return null;
+}
+
+// Check if item/auction is closed
+function isClosed(text: string): boolean {
+  const closedPatterns = [
+    /lot\s+is\s+closed/i,
+    /auction\s+closed/i,
+    /bidding\s+closed/i,
+    /closed\s+auction/i,
+    /this\s+lot\s+has\s+ended/i,
+    /bidding\s+has\s+ended/i
+  ];
+  return closedPatterns.some(pattern => pattern.test(text));
+}
+
 // Fetch with retry logic
 async function fetchWithRetry(url: string, retries = 2): Promise<string> {
   for (let i = 0; i <= retries; i++) {
@@ -179,7 +207,7 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
 
     // Extract image URLs helper
     const extractImage = (content: string): string | undefined => {
-      // Look for img tags
+      // Look for img tags with src
       const imgMatch = content.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
       if (imgMatch) {
         let imgUrl = imgMatch[1];
@@ -203,67 +231,102 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
       return undefined;
     };
 
-    // Pattern 1: Links to individual lots
-    const lotRegex = /<a[^>]*href="([^"]*(?:\/lot\/|\/item\/|\?lot=)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let matches = html.matchAll(lotRegex);
+    // Look for item blocks with more context (grab surrounding HTML for bid info)
+    // K-Bid structure: each item has title in <h4>, bid info nearby, image, and link to /auction/XXX/item/Y
 
-    for (const match of matches) {
-      let url = match[1];
-      if (!url.startsWith('http')) {
-        url = url.startsWith('/') ? `https://www.k-bid.com${url}` : `${auctionUrl}/${url}`;
-      }
+    // Pattern: Find all item links and grab surrounding context
+    const itemLinkRegex = /href="(\/auction\/\d+\/item\/\d+[^"]*)"/gi;
+    const itemUrls = new Set<string>();
+    let match;
 
-      const content = match[2];
-      const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      const imageUrl = extractImage(content);
+    while ((match = itemLinkRegex.exec(html)) !== null) {
+      const itemPath = match[1].split('?')[0]; // Remove query params
+      itemUrls.add(itemPath);
+    }
 
-      if (text.length > 3 && text.length < 1000) {
-        items.push({ text, url, imageUrl, auctionEndDate: auctionEndDateStr || undefined });
+    // For each unique item URL, find its context in the HTML
+    for (const itemPath of itemUrls) {
+      const fullUrl = `https://www.k-bid.com${itemPath}`;
+
+      // Find the section of HTML around this item link
+      const escapedPath = itemPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const contextRegex = new RegExp(`([\\s\\S]{0,2000}${escapedPath}[\\s\\S]{0,1000})`, 'i');
+      const contextMatch = html.match(contextRegex);
+
+      if (contextMatch) {
+        const context = contextMatch[1];
+        const textContent = context.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+        // Skip closed items
+        if (isClosed(textContent)) {
+          continue;
+        }
+
+        // Extract title from <h4> or alt text
+        let title = '';
+        const h4Match = context.match(/<h4[^>]*>(?:<a[^>]*>)?([^<]+)/i);
+        if (h4Match) {
+          title = h4Match[1].trim();
+        }
+        const altMatch = context.match(/alt="[^"]*image:\s*([^"]+)"/i);
+        if (!title && altMatch) {
+          title = altMatch[1].trim();
+        }
+
+        // Extract current bid
+        const currentBid = extractCurrentBid(textContent);
+
+        // Build text with title and bid for AI
+        let itemText = title || textContent.substring(0, 200);
+        if (currentBid !== null) {
+          itemText += ` Current Bid: $${currentBid.toFixed(2)}`;
+        }
+
+        // Extract image
+        const imageUrl = extractImage(context);
+
+        if (itemText.length > 3) {
+          items.push({
+            text: itemText,
+            url: fullUrl,
+            imageUrl,
+            auctionEndDate: auctionEndDateStr || undefined,
+            currentBid: currentBid || undefined
+          });
+        }
       }
     }
 
-    // Pattern 2: Look for item cards with bid info
+    // Fallback: Original pattern if no items found
     if (items.length === 0) {
-      const cardRegex = /<(?:div|article|li)[^>]*class="[^"]*(?:lot|item|product|card)[^"]*"[^>]*>([\s\S]*?)<\/(?:div|article|li)>/gi;
-      matches = html.matchAll(cardRegex);
+      const lotRegex = /<a[^>]*href="([^"]*(?:\/lot\/|\/item\/|\?lot=)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+      const matches = html.matchAll(lotRegex);
 
       for (const match of matches) {
-        const content = match[1];
-        const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-
-        const linkMatch = content.match(/<a[^>]*href="([^"]*)"[^>]*>/);
-        let url = linkMatch ? linkMatch[1] : auctionUrl;
-        if (url && !url.startsWith('http')) {
+        let url = match[1];
+        if (!url.startsWith('http')) {
           url = url.startsWith('/') ? `https://www.k-bid.com${url}` : `${auctionUrl}/${url}`;
         }
 
-        const imageUrl = extractImage(content);
-
-        if (text.match(/\$\d+|bid|lot/i) && text.length > 10 && text.length < 1000) {
-          items.push({ text, url, imageUrl, auctionEndDate: auctionEndDateStr || undefined });
-        }
-      }
-    }
-
-    // Pattern 3: Look for table rows
-    if (items.length === 0) {
-      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-      matches = html.matchAll(rowRegex);
-
-      for (const match of matches) {
-        const content = match[1];
+        const content = match[2];
         const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
-        const linkMatch = content.match(/<a[^>]*href="([^"]*)"[^>]*>/);
-        let url = linkMatch ? linkMatch[1] : auctionUrl;
-        if (url && !url.startsWith('http')) {
-          url = url.startsWith('/') ? `https://www.k-bid.com${url}` : `${auctionUrl}/${url}`;
+        // Skip closed items
+        if (isClosed(text)) {
+          continue;
         }
 
         const imageUrl = extractImage(content);
+        const currentBid = extractCurrentBid(text);
 
-        if (text.match(/\$\d+/) && text.length > 10 && text.length < 500) {
-          items.push({ text, url, imageUrl, auctionEndDate: auctionEndDateStr || undefined });
+        if (text.length > 3 && text.length < 1000) {
+          items.push({
+            text: currentBid ? `${text} Current Bid: $${currentBid.toFixed(2)}` : text,
+            url,
+            imageUrl,
+            auctionEndDate: auctionEndDateStr || undefined,
+            currentBid: currentBid || undefined
+          });
         }
       }
     }
@@ -275,12 +338,13 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
   }
 }
 
-export async function scrapeKBid(maxItems: number, daysUntilClose: number = 7): Promise<RawKBidItem[]> {
+export async function scrapeKBid(maxItems: number, startDate: string, endDate: string): Promise<RawKBidItem[]> {
   try {
     const now = new Date();
-    const maxEndDate = new Date(now.getTime() + daysUntilClose * 24 * 60 * 60 * 1000);
+    const minEndDate = new Date(startDate + 'T00:00:00');
+    const maxEndDate = new Date(endDate + 'T23:59:59');
 
-    console.log(`Scraping K-Bid auctions closing within ${daysUntilClose} days (before ${maxEndDate.toLocaleDateString()})...`);
+    console.log(`Scraping K-Bid auctions closing between ${minEndDate.toLocaleDateString()} and ${maxEndDate.toLocaleDateString()}...`);
 
     // Step 1: Get list of auctions
     const auctions = await getAuctionList();
@@ -290,17 +354,17 @@ export async function scrapeKBid(maxItems: number, daysUntilClose: number = 7): 
       throw new Error('No auctions found on K-Bid main page');
     }
 
-    // Step 2: Filter auctions by close date - exclude already closed ones
+    // Step 2: Filter auctions by close date - within the specified date range
     const filteredAuctions = auctions.filter(a => {
       // If we couldn't parse the date, include it (to be safe)
       if (a.endDateTime === null) return true;
       // Exclude if already closed
       if (a.endDateTime < now) return false;
-      // Include if closing within the specified window
-      return a.endDateTime <= maxEndDate;
+      // Include if closing within the specified date range
+      return a.endDateTime >= minEndDate && a.endDateTime <= maxEndDate;
     });
 
-    console.log(`${filteredAuctions.length} auctions closing within ${daysUntilClose} days (excluding already closed)`);
+    console.log(`${filteredAuctions.length} auctions closing between ${minEndDate.toLocaleDateString()} and ${maxEndDate.toLocaleDateString()} (excluding already closed)`);
 
     // If no auctions match date filter, use auctions that haven't closed yet
     const openAuctions = auctions.filter(a => a.endDateTime === null || a.endDateTime > now);

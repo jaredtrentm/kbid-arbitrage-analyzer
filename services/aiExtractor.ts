@@ -93,11 +93,17 @@ Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.
           parsed.excludeReason = 'Excluded category';
         }
 
+        // Use pre-extracted bid from scraper if AI couldn't parse it
+        let currentBid = typeof parsed.currentBid === 'number' ? parsed.currentBid : 0;
+        if (currentBid === 0 && item.currentBid && item.currentBid > 0) {
+          currentBid = item.currentBid;
+        }
+
         return {
           id: `item-${i + index}-${Date.now()}`,
           title: parsed.title || 'Unknown Item',
           description: parsed.description || '',
-          currentBid: typeof parsed.currentBid === 'number' ? parsed.currentBid : 0,
+          currentBid,
           category: parsed.category || 'Uncategorized',
           condition: parsed.condition || 'unknown',
           sizeClass: parsed.sizeClass || 'medium',

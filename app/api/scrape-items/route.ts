@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 interface ScrapeRequest {
   max_items: number;
-  days_until_close: number;
+  start_date: string;
+  end_date: string;
 }
 
 interface ScrapeResponse {
@@ -22,11 +23,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScrapeRes
     const params: ScrapeRequest = await request.json();
 
     const maxItems = params.max_items || 100;
-    const daysUntilClose = params.days_until_close || 7;
+    // Default to today through 7 days from now
+    const today = new Date();
+    const defaultStart = today.toISOString().split('T')[0];
+    const defaultEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const startDate = params.start_date || defaultStart;
+    const endDate = params.end_date || defaultEnd;
 
-    console.log(`Scraping up to ${maxItems} items from auctions closing within ${daysUntilClose} days...`);
+    console.log(`Scraping up to ${maxItems} items from auctions closing between ${startDate} and ${endDate}...`);
 
-    const rawItems = await scrapeKBid(maxItems, daysUntilClose);
+    const rawItems = await scrapeKBid(maxItems, startDate, endDate);
 
     console.log(`Scraped ${rawItems.length} items`);
 

@@ -3,7 +3,8 @@ export interface AnalysisParams {
   profit_min_percent: number;
   selling_fee_percent: number;
   max_items: number;
-  days_until_close: number; // Filter auctions closing within X days
+  start_date: string; // ISO date string (YYYY-MM-DD)
+  end_date: string;   // ISO date string (YYYY-MM-DD)
 }
 
 export interface RawKBidItem {
@@ -11,6 +12,7 @@ export interface RawKBidItem {
   url: string;
   imageUrl?: string;
   auctionEndDate?: string;
+  currentBid?: number; // Pre-extracted bid price from scraper
 }
 
 export interface ParsedItem {
