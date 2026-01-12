@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/run-analysis/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}
