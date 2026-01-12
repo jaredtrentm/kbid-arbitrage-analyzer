@@ -40,7 +40,7 @@ async function fetchWithRetry(url: string, retries = 1): Promise<string> {
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
       const response = await fetch(url, {
         headers: {
@@ -378,22 +378,19 @@ export async function scrapeKBid(maxItems: number, startDate: string, endDate: s
     const openAuctions = auctions.filter(a => a.endDateTime === null || a.endDateTime > now);
     const auctionsToScrape = filteredAuctions.length > 0 ? filteredAuctions : openAuctions.slice(0, 10);
 
-    // Step 3: Scrape items from each auction (limit to 5 for Hobby plan timeout)
-    const allItems: RawKBidItem[] = [];
-    const maxAuctions = Math.min(auctionsToScrape.length, 5);
+    // Step 3: Scrape items from auctions in parallel (limit to 3 for Hobby plan timeout)
+    const maxAuctions = Math.min(auctionsToScrape.length, 3);
+    const auctionBatch = auctionsToScrape.slice(0, maxAuctions);
 
-    for (let i = 0; i < maxAuctions && allItems.length < maxItems; i++) {
-      const auction = auctionsToScrape[i];
-      console.log(`Scraping auction ${i + 1}/${maxAuctions}: ${auction.title.substring(0, 40)}... (closes: ${auction.endDateTimeStr || 'unknown'})`);
+    console.log(`Scraping ${maxAuctions} auctions in parallel...`);
 
-      const items = await getAuctionItems(auction.url, auction.endDateTimeStr);
-      allItems.push(...items);
+    const auctionPromises = auctionBatch.map(auction => {
+      console.log(`Queuing: ${auction.title.substring(0, 40)}... (closes: ${auction.endDateTimeStr || 'unknown'})`);
+      return getAuctionItems(auction.url, auction.endDateTimeStr);
+    });
 
-      // Small delay between auction fetches
-      if (i < maxAuctions - 1) {
-        await new Promise(r => setTimeout(r, 100));
-      }
-    }
+    const results = await Promise.all(auctionPromises);
+    const allItems: RawKBidItem[] = results.flat();
 
     // Deduplicate by URL
     const seen = new Set<string>();
