@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { scrapeKBid } from '@/services/kbidScraper';
 import { extractItemDetails } from '@/services/aiExtractor';
 import { getValuation } from '@/services/webSearchValuation';
 import { calculateProfit } from '@/services/profitCalculator';
 import { getResaleAdvice } from '@/services/resaleAdvisor';
-import { AnalysisParams, AnalyzedItem, AnalysisResponse, ParsedItem } from '@/lib/types';
+import { AnalyzedItem, AnalysisResponse, ParsedItem, RawKBidItem } from '@/lib/types';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
+interface BatchAnalysisParams {
+  profit_min_dollars: number;
+  profit_min_percent: number;
+  selling_fee_percent: number;
+  raw_items: RawKBidItem[]; // Items to analyze (from scrape-items endpoint)
+}
+
 async function processItem(
   item: ParsedItem,
-  params: AnalysisParams
+  params: BatchAnalysisParams
 ): Promise<AnalyzedItem | null> {
   try {
     const valuation = await getValuation(item);
@@ -39,7 +45,13 @@ async function processItem(
       };
     }
 
-    const profit = calculateProfit(item, valuation, params);
+    const profit = calculateProfit(item, valuation, {
+      profit_min_dollars: params.profit_min_dollars,
+      profit_min_percent: params.profit_min_percent,
+      selling_fee_percent: params.selling_fee_percent,
+      max_items: 0,
+      days_until_close: 0
+    });
 
     // Check if meets profit criteria
     const meetsCriteria = profit.expectedProfit >= params.profit_min_dollars &&
@@ -82,17 +94,17 @@ async function processWithConcurrency<T, R>(
 
 export async function POST(request: NextRequest): Promise<NextResponse<AnalysisResponse>> {
   try {
-    const params: AnalysisParams = await request.json();
+    const params: BatchAnalysisParams = await request.json();
 
-    // Validate params - allow 0 values
+    // Validate params
     if (params.profit_min_dollars === undefined ||
         params.profit_min_percent === undefined ||
-        !params.max_items) {
+        !params.raw_items || params.raw_items.length === 0) {
       return NextResponse.json({
         success: false,
         items: [],
         summary: { totalScraped: 0, totalAnalyzed: 0, totalProfitable: 0, errors: 1 },
-        error: 'Missing required parameters'
+        error: 'Missing required parameters or no items to analyze'
       }, { status: 400 });
     }
 
@@ -115,22 +127,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       }, { status: 500 });
     }
 
-    // Step 1: Scrape K-Bid
-    const daysUntilClose = params.days_until_close || 7;
-    console.log(`Scraping K-Bid auctions closing within ${daysUntilClose} days...`);
-    const rawItems = await scrapeKBid(params.max_items, daysUntilClose);
-    console.log(`Scraped ${rawItems.length} items`);
+    const rawItems = params.raw_items;
+    console.log(`Analyzing batch of ${rawItems.length} items...`);
 
-    if (rawItems.length === 0) {
-      return NextResponse.json({
-        success: true,
-        items: [],
-        summary: { totalScraped: 0, totalAnalyzed: 0, totalProfitable: 0, errors: 0 },
-        error: 'No items found on K-Bid. The website structure may have changed.'
-      });
-    }
-
-    // Step 2: Extract item details with AI
+    // Step 1: Extract item details with AI
     console.log('Extracting item details...');
     const parsedItems = await extractItemDetails(rawItems);
     console.log(`Parsed ${parsedItems.length} items`);
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       });
     }
 
-    // Step 3: Process items (valuation + profit + advice)
+    // Step 2: Process items (valuation + profit + advice)
     console.log('Processing items...');
     const analyzedItems = await processWithConcurrency(
       eligibleItems,

@@ -6,9 +6,10 @@ import { AnalysisParams } from '@/lib/types';
 interface Props {
   onSubmit: (params: AnalysisParams) => void;
   isLoading: boolean;
+  buttonText?: string;
 }
 
-export default function ParameterForm({ onSubmit, isLoading }: Props) {
+export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run Analysis' }: Props) {
   const [params, setParams] = useState<AnalysisParams>({
     profit_min_dollars: 20,
     profit_min_percent: 30,
@@ -99,7 +100,7 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
           }`}
       >
-        {isLoading ? 'Analyzing...' : 'Run Analysis'}
+        {isLoading ? 'Loading...' : buttonText}
       </button>
     </form>
   );
