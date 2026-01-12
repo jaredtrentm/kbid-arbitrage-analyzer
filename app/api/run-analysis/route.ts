@@ -16,22 +16,38 @@ async function processItem(
   try {
     const valuation = await getValuation(item);
 
-    // Skip items with no valuation
+    // If no valuation, create a placeholder
     if (valuation.estimatedValue === 0) {
-      return null;
+      return {
+        item,
+        valuation,
+        profit: {
+          maxBid: 0,
+          expectedProfit: 0,
+          expectedROI: 0,
+          breakEvenPrice: 0,
+          shippingEstimate: 0,
+          fees: 0
+        },
+        resale: {
+          recommendedChannel: 'Unknown',
+          riskScore: 'high',
+          riskReasoning: 'Could not determine market value',
+          tips: []
+        },
+        meetsCriteria: false
+      };
     }
 
     const profit = calculateProfit(item, valuation, params);
 
-    // Skip items that don't meet profit criteria
-    if (profit.expectedProfit < params.profit_min_dollars ||
-        profit.expectedROI < params.profit_min_percent) {
-      return null;
-    }
+    // Check if meets profit criteria
+    const meetsCriteria = profit.expectedProfit >= params.profit_min_dollars &&
+                          profit.expectedROI >= params.profit_min_percent;
 
     const resale = await getResaleAdvice(item, valuation);
 
-    return { item, valuation, profit, resale };
+    return { item, valuation, profit, resale, meetsCriteria };
   } catch (error) {
     console.error('Error processing item:', item.title, error);
     return null;
@@ -68,8 +84,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
   try {
     const params: AnalysisParams = await request.json();
 
-    // Validate params
-    if (!params.profit_min_dollars || !params.profit_min_percent || !params.max_items) {
+    // Validate params - allow 0 values
+    if (params.profit_min_dollars === undefined ||
+        params.profit_min_percent === undefined ||
+        !params.max_items) {
       return NextResponse.json({
         success: false,
         items: [],
@@ -142,8 +160,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       3
     );
 
-    // Sort by expected profit descending
+    // Sort by expected profit descending (profitable items first)
     analyzedItems.sort((a, b) => b.profit.expectedProfit - a.profit.expectedProfit);
+
+    // Count profitable items
+    const profitableCount = analyzedItems.filter(item => item.meetsCriteria).length;
 
     return NextResponse.json({
       success: true,
@@ -151,7 +172,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       summary: {
         totalScraped: rawItems.length,
         totalAnalyzed: eligibleItems.length,
-        totalProfitable: analyzedItems.length,
+        totalProfitable: profitableCount,
         errors: eligibleItems.length - analyzedItems.length
       }
     });

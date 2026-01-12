@@ -9,10 +9,11 @@ interface Props {
 
 export default function ResultCard({ data }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const { item, valuation, profit, resale } = data;
+  const { item, valuation, profit, resale, meetsCriteria } = data;
 
   const profitColor = profit.expectedProfit >= 100 ? 'text-green-600' :
-                      profit.expectedProfit >= 50 ? 'text-green-500' : 'text-yellow-600';
+                      profit.expectedProfit >= 50 ? 'text-green-500' :
+                      profit.expectedProfit > 0 ? 'text-yellow-600' : 'text-red-500';
 
   const confidenceColor = valuation.confidence === 'high' ? 'bg-green-100 text-green-800' :
                           valuation.confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -22,14 +23,28 @@ export default function ResultCard({ data }: Props) {
                     resale.riskScore === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-red-100 text-red-800';
 
+  // Card border color based on meetsCriteria
+  const cardBorder = meetsCriteria ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-gray-300';
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <div className={`bg-white rounded-lg shadow-md overflow-hidden ${cardBorder}`}>
       <div className="p-3 sm:p-4">
-        {/* Title and confidence badge */}
+        {/* Title row with shipping indicator */}
         <div className="flex justify-between items-start gap-2 mb-2">
-          <h3 className="font-semibold text-gray-800 text-sm sm:text-base flex-1 line-clamp-2">
-            {item.title}
-          </h3>
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-semibold text-gray-800 text-sm sm:text-base line-clamp-2">
+                {item.title}
+              </h3>
+              {item.shippingAvailable && (
+                <span className="text-green-500 flex-shrink-0" title="Shipping Available">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </span>
+              )}
+            </div>
+          </div>
           <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium whitespace-nowrap ${confidenceColor}`}>
             {valuation.confidence}
           </span>
@@ -81,7 +96,7 @@ export default function ResultCard({ data }: Props) {
               rel="noopener noreferrer"
               className="py-1.5 sm:py-2 px-3 sm:px-4 bg-blue-600 hover:bg-blue-700 rounded text-xs sm:text-sm font-medium text-white transition-colors"
             >
-              View
+              View Auction
             </a>
           )}
         </div>

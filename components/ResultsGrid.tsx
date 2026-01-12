@@ -8,17 +8,26 @@ interface Props {
 export default function ResultsGrid({ items }: Props) {
   if (items.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        No profitable items found matching your criteria.
+      <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">
+        No items found. Try adjusting your search parameters.
       </div>
     );
   }
 
+  const profitableCount = items.filter(item => item.meetsCriteria).length;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((item, index) => (
-        <ResultCard key={item.item.id || index} data={item} />
-      ))}
+    <div>
+      {profitableCount === 0 && items.length > 0 && (
+        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs sm:text-sm text-yellow-800">
+          No items meet your profit criteria. Showing all {items.length} analyzed items below (sorted by potential profit).
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {items.map((item, index) => (
+          <ResultCard key={item.item.id || index} data={item} />
+        ))}
+      </div>
     </div>
   );
 }

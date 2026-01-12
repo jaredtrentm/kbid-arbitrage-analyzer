@@ -46,6 +46,7 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
   "category": "category name",
   "condition": "new/like-new/good/fair/poor/unknown",
   "sizeClass": "small/medium/large/oversized",
+  "shippingAvailable": true,
   "excluded": false,
   "excludeReason": null
 }
@@ -53,6 +54,7 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 Rules:
 - currentBid: Extract the dollar amount if visible, otherwise use 0
 - sizeClass: small (<5lbs, fits in shoebox), medium (5-30lbs), large (30-70lbs), oversized (>70lbs or furniture)
+- shippingAvailable: Set true if text mentions "shipping available", "will ship", "shipping offered", or similar. Set false if "pickup only", "local pickup", "no shipping", or if item is too large to ship reasonably.
 - excluded: Set true for:
   * Vehicles, real estate, firearms, ammunition
   * Coins, currency, precious metals (gold, silver, bullion)
@@ -60,7 +62,7 @@ Rules:
   * Farm equipment, tractors, agricultural machinery
   * Heavy equipment, construction equipment
   * Items impossible to resell online
-- excludeReason: If excluded, explain why (e.g., "Coins/precious metals category", "Heavy equipment")
+- excludeReason: If excluded, explain why
 
 Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.`
           }]
@@ -101,6 +103,7 @@ Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.
           sizeClass: parsed.sizeClass || 'medium',
           auctionUrl: item.url,
           imageUrl: item.imageUrl,
+          shippingAvailable: parsed.shippingAvailable ?? false,
           excluded: parsed.excluded || false,
           excludeReason: parsed.excludeReason || undefined
         } as ParsedItem;

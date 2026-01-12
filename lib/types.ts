@@ -21,6 +21,7 @@ export interface ParsedItem {
   sizeClass: 'small' | 'medium' | 'large' | 'oversized';
   auctionUrl: string;
   imageUrl?: string;
+  shippingAvailable: boolean;
   excluded: boolean;
   excludeReason?: string;
 }
@@ -55,6 +56,7 @@ export interface AnalyzedItem {
   valuation: ValuationResult;
   profit: ProfitAnalysis;
   resale: ResaleAdvice;
+  meetsCriteria: boolean;
 }
 
 export interface AnalysisResponse {
