@@ -35,8 +35,6 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
             value={params.profit_min_dollars}
             onChange={(e) => setParams(p => ({ ...p, profit_min_dollars: Number(e.target.value) }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            min="0"
-            step="5"
           />
         </div>
 
@@ -49,8 +47,6 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
             value={params.profit_min_percent}
             onChange={(e) => setParams(p => ({ ...p, profit_min_percent: Number(e.target.value) }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            min="0"
-            step="5"
           />
         </div>
 
@@ -63,9 +59,6 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
             value={params.selling_fee_percent}
             onChange={(e) => setParams(p => ({ ...p, selling_fee_percent: Number(e.target.value) }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            min="0"
-            max="50"
-            step="1"
           />
         </div>
 
@@ -78,9 +71,6 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
             value={params.max_items}
             onChange={(e) => setParams(p => ({ ...p, max_items: Number(e.target.value) }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            min="1"
-            max="200"
-            step="10"
           />
         </div>
       </div>
