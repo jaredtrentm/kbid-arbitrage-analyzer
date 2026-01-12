@@ -24,60 +24,62 @@ export default function ResultCard({ data }: Props) {
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-gray-800 flex-1 pr-2 line-clamp-2">
+      <div className="p-3 sm:p-4">
+        {/* Title and confidence badge */}
+        <div className="flex justify-between items-start gap-2 mb-2">
+          <h3 className="font-semibold text-gray-800 text-sm sm:text-base flex-1 line-clamp-2">
             {item.title}
           </h3>
-          <span className={`px-2 py-1 rounded text-xs font-medium ${confidenceColor}`}>
+          <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium whitespace-nowrap ${confidenceColor}`}>
             {valuation.confidence}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-          <div>
-            <span className="text-gray-500">Current Bid:</span>
-            <span className="ml-1 font-medium text-gray-900">${item.currentBid.toFixed(2)}</span>
+        {/* Price grid - 2x2 on mobile */}
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs sm:text-sm mb-2 sm:mb-3">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Bid:</span>
+            <span className="font-medium text-gray-900">${item.currentBid.toFixed(0)}</span>
           </div>
-          <div>
-            <span className="text-gray-500">Max Bid:</span>
-            <span className="ml-1 font-medium text-blue-600">${profit.maxBid.toFixed(2)}</span>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Max:</span>
+            <span className="font-medium text-blue-600">${profit.maxBid.toFixed(0)}</span>
           </div>
-          <div>
-            <span className="text-gray-500">Est. Value:</span>
-            <span className="ml-1 font-medium text-gray-900">${valuation.estimatedValue.toFixed(2)}</span>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Value:</span>
+            <span className="font-medium text-gray-900">${valuation.estimatedValue.toFixed(0)}</span>
           </div>
-          <div>
+          <div className="flex justify-between">
             <span className="text-gray-500">Profit:</span>
-            <span className={`ml-1 font-bold ${profitColor}`}>
-              ${profit.expectedProfit.toFixed(2)}
-            </span>
+            <span className={`font-bold ${profitColor}`}>${profit.expectedProfit.toFixed(0)}</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">ROI:</span>
-            <span className={`font-bold ${profitColor}`}>{profit.expectedROI.toFixed(0)}%</span>
+        {/* ROI and Risk row */}
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="text-xs sm:text-sm text-gray-500">ROI:</span>
+            <span className={`font-bold text-sm sm:text-base ${profitColor}`}>{profit.expectedROI.toFixed(0)}%</span>
           </div>
-          <span className={`px-2 py-1 rounded text-xs font-medium ${riskColor}`}>
+          <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium ${riskColor}`}>
             {resale.riskScore} risk
           </span>
         </div>
 
+        {/* Action buttons */}
         <div className="flex gap-2">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium text-gray-700 transition-colors"
+            className="flex-1 py-1.5 sm:py-2 px-2 sm:px-3 bg-gray-100 hover:bg-gray-200 rounded text-xs sm:text-sm font-medium text-gray-700 transition-colors"
           >
-            {expanded ? 'Hide Details' : 'Show Details'}
+            {expanded ? 'Hide' : 'Details'}
           </button>
           {item.auctionUrl && (
             <a
               href={item.auctionUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="py-2 px-3 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium text-white transition-colors"
+              className="py-1.5 sm:py-2 px-3 sm:px-4 bg-blue-600 hover:bg-blue-700 rounded text-xs sm:text-sm font-medium text-white transition-colors"
             >
               View
             </a>
@@ -85,31 +87,32 @@ export default function ResultCard({ data }: Props) {
         </div>
       </div>
 
+      {/* Expanded details */}
       {expanded && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50 text-sm">
-          <div className="mb-3">
-            <h4 className="font-medium text-gray-700 mb-1">Valuation Reasoning</h4>
+        <div className="border-t border-gray-200 p-3 sm:p-4 bg-gray-50 text-xs sm:text-sm">
+          <div className="mb-2 sm:mb-3">
+            <h4 className="font-medium text-gray-700 mb-1">Valuation</h4>
             <p className="text-gray-600">{valuation.reasoning}</p>
           </div>
 
-          <div className="mb-3">
-            <h4 className="font-medium text-gray-700 mb-1">Cost Breakdown</h4>
-            <ul className="text-gray-600 space-y-1">
-              <li>Shipping Est: ${profit.shippingEstimate}</li>
-              <li>Platform Fees: ${profit.fees.toFixed(2)}</li>
-              <li>Break-even: ${profit.breakEvenPrice.toFixed(2)}</li>
-            </ul>
+          <div className="mb-2 sm:mb-3">
+            <h4 className="font-medium text-gray-700 mb-1">Costs</h4>
+            <div className="text-gray-600 grid grid-cols-2 gap-1">
+              <span>Shipping: ${profit.shippingEstimate}</span>
+              <span>Fees: ${profit.fees.toFixed(0)}</span>
+              <span className="col-span-2">Break-even: ${profit.breakEvenPrice.toFixed(0)}</span>
+            </div>
           </div>
 
-          <div className="mb-3">
-            <h4 className="font-medium text-gray-700 mb-1">Resale Recommendation</h4>
+          <div className="mb-2 sm:mb-3">
+            <h4 className="font-medium text-gray-700 mb-1">Resale</h4>
             <p className="text-gray-600">
               <strong>{resale.recommendedChannel}</strong> - {resale.riskReasoning}
             </p>
           </div>
 
           {resale.tips.length > 0 && (
-            <div>
+            <div className="mb-2 sm:mb-3">
               <h4 className="font-medium text-gray-700 mb-1">Tips</h4>
               <ul className="text-gray-600 list-disc list-inside">
                 {resale.tips.map((tip, i) => (
@@ -120,7 +123,7 @@ export default function ResultCard({ data }: Props) {
           )}
 
           {valuation.sources.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="pt-2 border-t border-gray-200">
               <h4 className="font-medium text-gray-700 mb-1">Sources</h4>
               <ul className="text-gray-500 text-xs">
                 {valuation.sources.map((source, i) => (

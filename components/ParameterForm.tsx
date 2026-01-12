@@ -22,55 +22,55 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">Analysis Parameters</h2>
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-3 sm:p-6">
+      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Analysis Parameters</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
             Min Profit ($)
           </label>
           <input
             type="number"
             value={params.profit_min_dollars}
             onChange={(e) => setParams(p => ({ ...p, profit_min_dollars: Number(e.target.value) }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
             Min ROI (%)
           </label>
           <input
             type="number"
             value={params.profit_min_percent}
             onChange={(e) => setParams(p => ({ ...p, profit_min_percent: Number(e.target.value) }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Selling Fees (%)
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+            Fees (%)
           </label>
           <input
             type="number"
             value={params.selling_fee_percent}
             onChange={(e) => setParams(p => ({ ...p, selling_fee_percent: Number(e.target.value) }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
             Max Items
           </label>
           <input
             type="number"
             value={params.max_items}
             onChange={(e) => setParams(p => ({ ...p, max_items: Number(e.target.value) }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
           />
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function ParameterForm({ onSubmit, isLoading }: Props) {
       <button
         type="submit"
         disabled={isLoading}
-        className={`mt-6 w-full py-3 px-4 rounded-md font-medium text-white transition-colors
+        className={`mt-3 sm:mt-6 w-full py-2.5 sm:py-3 px-4 rounded-md font-medium text-white text-sm sm:text-base transition-colors
           ${isLoading
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'

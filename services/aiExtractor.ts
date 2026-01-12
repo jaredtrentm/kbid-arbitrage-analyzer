@@ -3,6 +3,18 @@ import { RawKBidItem, ParsedItem } from '@/lib/types';
 
 const anthropic = new Anthropic();
 
+// Categories to exclude from analysis
+const EXCLUDED_CATEGORIES = [
+  'coins',
+  'currency',
+  'precious metals',
+  'commercial',
+  'industrial',
+  'farm equipment',
+  'heavy equipment',
+  'construction'
+];
+
 export async function extractItemDetails(rawItems: RawKBidItem[]): Promise<ParsedItem[]> {
   const results: ParsedItem[] = [];
 
@@ -41,8 +53,14 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 Rules:
 - currentBid: Extract the dollar amount if visible, otherwise use 0
 - sizeClass: small (<5lbs, fits in shoebox), medium (5-30lbs), large (30-70lbs), oversized (>70lbs or furniture)
-- excluded: Set true for vehicles, real estate, firearms, ammunition, or items impossible to resell
-- excludeReason: If excluded, explain why
+- excluded: Set true for:
+  * Vehicles, real estate, firearms, ammunition
+  * Coins, currency, precious metals (gold, silver, bullion)
+  * Commercial & industrial equipment
+  * Farm equipment, tractors, agricultural machinery
+  * Heavy equipment, construction equipment
+  * Items impossible to resell online
+- excludeReason: If excluded, explain why (e.g., "Coins/precious metals category", "Heavy equipment")
 
 Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.`
           }]
@@ -60,6 +78,18 @@ Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.
         }
 
         const parsed = JSON.parse(jsonStr);
+
+        // Double-check category exclusion
+        const category = (parsed.category || '').toLowerCase();
+        const title = (parsed.title || '').toLowerCase();
+        const isExcludedCategory = EXCLUDED_CATEGORIES.some(exc =>
+          category.includes(exc) || title.includes(exc)
+        );
+
+        if (isExcludedCategory && !parsed.excluded) {
+          parsed.excluded = true;
+          parsed.excludeReason = 'Excluded category';
+        }
 
         return {
           id: `item-${i + index}-${Date.now()}`,

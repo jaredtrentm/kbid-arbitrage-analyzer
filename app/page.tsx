@@ -66,17 +66,17 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            K-Bid Arbitrage Analyzer
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-8">
+        <header className="mb-3 sm:mb-6">
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
+            K-Bid Arbitrage
           </h1>
-          <p className="text-gray-600 mt-1">
-            Find profitable auction opportunities with AI-powered valuations
+          <p className="text-xs sm:text-base text-gray-600 mt-0.5 sm:mt-1">
+            Find profitable auctions with AI valuations
           </p>
         </header>
 
-        <div className="mb-6">
+        <div className="mb-3 sm:mb-6">
           <ParameterForm onSubmit={handleSubmit} isLoading={isLoading} />
         </div>
 
@@ -88,16 +88,15 @@ export default function Home() {
 
         {results && !isLoading && (
           <div>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-              <div className="text-sm text-gray-600">
-                Found <strong>{results.summary.totalProfitable}</strong> profitable items
-                {' '}out of {results.summary.totalAnalyzed} analyzed
-                {' '}({results.summary.totalScraped} scraped)
+            <div className="flex flex-row justify-between items-center gap-2 mb-3 sm:mb-4">
+              <div className="text-xs sm:text-sm text-gray-600">
+                <strong>{results.summary.totalProfitable}</strong> profitable
+                <span className="hidden sm:inline"> of {results.summary.totalAnalyzed} analyzed ({results.summary.totalScraped} scraped)</span>
               </div>
               {results.items.length > 0 && (
                 <button
                   onClick={handleExportCSV}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm transition-colors"
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-xs sm:text-sm transition-colors"
                 >
                   Export CSV
                 </button>
