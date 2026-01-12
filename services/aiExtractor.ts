@@ -105,7 +105,8 @@ Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.
           imageUrl: item.imageUrl,
           shippingAvailable: parsed.shippingAvailable ?? false,
           excluded: parsed.excluded || false,
-          excludeReason: parsed.excludeReason || undefined
+          excludeReason: parsed.excludeReason || undefined,
+          auctionEndDate: item.auctionEndDate
         } as ParsedItem;
 
       } catch (error) {

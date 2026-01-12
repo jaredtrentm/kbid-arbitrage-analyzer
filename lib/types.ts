@@ -3,12 +3,14 @@ export interface AnalysisParams {
   profit_min_percent: number;
   selling_fee_percent: number;
   max_items: number;
+  days_until_close: number; // Filter auctions closing within X days
 }
 
 export interface RawKBidItem {
   text: string;
   url: string;
   imageUrl?: string;
+  auctionEndDate?: string;
 }
 
 export interface ParsedItem {
@@ -24,6 +26,7 @@ export interface ParsedItem {
   shippingAvailable: boolean;
   excluded: boolean;
   excludeReason?: string;
+  auctionEndDate?: string;
 }
 
 export interface ValuationResult {

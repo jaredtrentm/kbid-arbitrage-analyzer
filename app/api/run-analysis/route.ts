@@ -116,8 +116,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     }
 
     // Step 1: Scrape K-Bid
-    console.log('Scraping K-Bid...');
-    const rawItems = await scrapeKBid(params.max_items);
+    const daysUntilClose = params.days_until_close || 7;
+    console.log(`Scraping K-Bid auctions closing within ${daysUntilClose} days...`);
+    const rawItems = await scrapeKBid(params.max_items, daysUntilClose);
     console.log(`Scraped ${rawItems.length} items`);
 
     if (rawItems.length === 0) {

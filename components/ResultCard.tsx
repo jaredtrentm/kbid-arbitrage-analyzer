@@ -9,6 +9,7 @@ interface Props {
 
 export default function ResultCard({ data }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const { item, valuation, profit, resale, meetsCriteria } = data;
 
   const profitColor = profit.expectedProfit >= 100 ? 'text-green-600' :
@@ -28,6 +29,18 @@ export default function ResultCard({ data }: Props) {
 
   return (
     <div className={`bg-white rounded-lg shadow-md overflow-hidden ${cardBorder}`}>
+      {/* Image section */}
+      {item.imageUrl && !imgError && (
+        <div className="relative w-full h-32 sm:h-40 bg-gray-100">
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        </div>
+      )}
+
       <div className="p-3 sm:p-4">
         {/* Title row with shipping indicator */}
         <div className="flex justify-between items-start gap-2 mb-2">
@@ -44,6 +57,12 @@ export default function ResultCard({ data }: Props) {
                 </span>
               )}
             </div>
+            {/* Closing time */}
+            {item.auctionEndDate && (
+              <p className="text-xs text-orange-600 mt-0.5">
+                Closes: {item.auctionEndDate}
+              </p>
+            )}
           </div>
           <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium whitespace-nowrap ${confidenceColor}`}>
             {valuation.confidence}
