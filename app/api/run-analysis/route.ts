@@ -5,9 +5,69 @@ import { calculateProfit } from '@/services/profitCalculator';
 import { getResaleAdvice } from '@/services/resaleAdvisor';
 import { AnalyzedItem, AnalysisResponse, ParsedItem, RawKBidItem } from '@/lib/types';
 import { mapToFilterCategory, CATEGORY_OPTIONS } from '@/lib/config';
+import { supabase, AnalyzedAuctionInsert } from '@/lib/supabase';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+// Log analyzed items to database for market intelligence
+async function logAnalyzedItems(items: AnalyzedItem[]): Promise<void> {
+  if (items.length === 0) return;
+
+  const auctionRecords: AnalyzedAuctionInsert[] = items.map(item => {
+    const isOverbid = item.item.currentBid > item.profit.maxBid;
+    const overpayAmount = isOverbid ? item.item.currentBid - item.valuation.estimatedValue : undefined;
+    const overpayPercent = isOverbid && item.valuation.estimatedValue > 0
+      ? ((item.item.currentBid - item.valuation.estimatedValue) / item.valuation.estimatedValue) * 100
+      : undefined;
+
+    return {
+      title: item.item.title,
+      description: item.item.description,
+      category: item.item.category,
+      condition: item.item.condition,
+      size_class: item.item.sizeClass,
+      auction_url: item.item.auctionUrl,
+      image_url: item.item.imageUrl,
+      auction_end_date: item.item.auctionEndDate,
+      bid_count: item.item.bidCount || 0,
+      bidder_count: item.item.bidderCount || 0,
+      interest_level: item.item.interestLevel,
+      current_bid: item.item.currentBid,
+      estimated_value: item.valuation.estimatedValue,
+      max_bid: item.profit.maxBid,
+      actual_profit: item.profit.actualProfit,
+      actual_roi: item.profit.actualROI,
+      expected_profit: item.profit.expectedProfit,
+      expected_roi: item.profit.expectedROI,
+      break_even_price: item.profit.breakEvenPrice,
+      shipping_estimate: item.profit.shippingEstimate,
+      fees: item.profit.fees,
+      is_overbid: isOverbid,
+      is_profitable: item.meetsCriteria,
+      overpay_amount: overpayAmount,
+      overpay_percent: overpayPercent,
+      risk_score: item.resale.riskScore,
+      risk_reasoning: item.resale.riskReasoning,
+      recommended_channel: item.resale.recommendedChannel,
+      valuation_confidence: item.valuation.confidence,
+      valuation_reasoning: item.valuation.reasoning,
+      valuation_low: item.valuation.lowEstimate,
+      valuation_high: item.valuation.highEstimate,
+    };
+  });
+
+  // Insert into database
+  const { error } = await supabase
+    .from('analyzed_auctions')
+    .insert(auctionRecords);
+
+  if (error) {
+    console.error('Failed to log auctions to database:', error);
+  } else {
+    console.log(`Logged ${auctionRecords.length} auctions to database`);
+  }
+}
 
 interface BatchAnalysisParams {
   profit_min_dollars: number;
@@ -183,6 +243,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
 
     // Count profitable items
     const profitableCount = analyzedItems.filter(item => item.meetsCriteria).length;
+
+    // Log all analyzed items to database for market intelligence (fire and forget)
+    logAnalyzedItems(analyzedItems).catch(err => {
+      console.error('Failed to log analyzed items:', err);
+    });
 
     return NextResponse.json({
       success: true,
