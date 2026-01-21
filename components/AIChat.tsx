@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { AnalyzedItem } from '@/lib/types';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,13 +11,17 @@ interface Message {
 
 interface Props {
   onClose: () => void;
+  displayedResults?: AnalyzedItem[];
 }
 
-export default function AIChat({ onClose }: Props) {
+export default function AIChat({ onClose, displayedResults = [] }: Props) {
+  const hasResults = displayedResults.length > 0;
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hi! I\'m your auction arbitrage assistant. I can help you with:\n\n- Questions about your saved watchlist items\n- General resale and arbitrage advice\n- Shipping and pricing strategies\n- Market trends and channel recommendations\n\nWhat would you like to know?'
+      content: hasResults
+        ? `Hi! I'm your auction arbitrage assistant. I can see **${displayedResults.length} items** currently displayed in your results.\n\nI can help you with:\n\n- Questions about the displayed listings\n- Your saved watchlist items\n- General resale and arbitrage advice\n- Shipping and pricing strategies\n\nWhat would you like to know?`
+        : 'Hi! I\'m your auction arbitrage assistant. I can help you with:\n\n- Questions about your saved watchlist items\n- General resale and arbitrage advice\n- Shipping and pricing strategies\n- Market trends and channel recommendations\n\nWhat would you like to know?'
     }
   ]);
   const [input, setInput] = useState('');
@@ -41,12 +46,27 @@ export default function AIChat({ onClose }: Props) {
     setLoading(true);
 
     try {
+      // Prepare displayed results for API (simplified format to reduce payload)
+      const resultsForApi = displayedResults.slice(0, 50).map(r => ({
+        title: r.item.title,
+        category: r.item.category,
+        currentBid: r.item.currentBid,
+        maxBid: r.profit.maxBid,
+        estimatedValue: r.valuation.estimatedValue,
+        expectedProfit: r.profit.expectedProfit,
+        expectedROI: r.profit.expectedROI,
+        riskScore: r.resale.riskScore,
+        channel: r.resale.recommendedChannel,
+        confidence: r.valuation.confidence
+      }));
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
-          includeWatchlist: true
+          includeWatchlist: true,
+          displayedResults: resultsForApi
         })
       });
 
@@ -67,12 +87,19 @@ export default function AIChat({ onClose }: Props) {
     }
   };
 
-  const quickQuestions = [
-    'Which items have the highest ROI?',
-    'What are the riskiest items in my watchlist?',
-    'Tips for shipping large items?',
-    'Best platforms for electronics?'
-  ];
+  const quickQuestions = hasResults
+    ? [
+        'Which displayed items have the best profit potential?',
+        'What are the riskiest items shown?',
+        'Compare the electronics listings',
+        'Which items should I bid on first?'
+      ]
+    : [
+        'Tips for shipping large items?',
+        'Best platforms for electronics?',
+        'How do I estimate resale value?',
+        'What categories are most profitable?'
+      ];
 
   const handleQuickQuestion = (question: string) => {
     setInput(question);

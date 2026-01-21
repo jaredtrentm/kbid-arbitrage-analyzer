@@ -119,6 +119,9 @@ export default function Home() {
     setBatchIndex(0);
     setSummary({ totalScraped: 0, totalAnalyzed: 0, totalProfitable: 0, errors: 0 });
     setCurrentParams(params);
+    // Initialize filter sliders from search params
+    setFilterMinProfit(params.profit_min_dollars);
+    setFilterMinROI(params.profit_min_percent);
 
     try {
       const response = await fetch('/api/scrape-items', {
@@ -257,6 +260,8 @@ export default function Home() {
     setCurrentParams(null);
     setError(null);
     setRiskFilter('all');
+    setFilterMinProfit(0);
+    setFilterMinROI(0);
   };
 
   const isLoading = step === 'scraping' || step === 'analyzing';
@@ -453,14 +458,27 @@ export default function Home() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Min Profit: <span className="text-blue-600 dark:text-blue-400">${filterMinProfit}</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Min Profit
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 dark:text-gray-400">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="500"
+                        value={filterMinProfit}
+                        onChange={(e) => setFilterMinProfit(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+                        className="w-16 px-2 py-1 text-sm text-right border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
                   <input
                     type="range"
                     min="0"
                     max="500"
-                    step="10"
+                    step="1"
                     value={filterMinProfit}
                     onChange={(e) => setFilterMinProfit(Number(e.target.value))}
                     className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
@@ -471,14 +489,27 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Min ROI: <span className="text-blue-600 dark:text-blue-400">{filterMinROI}%</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Min ROI
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        max="200"
+                        value={filterMinROI}
+                        onChange={(e) => setFilterMinROI(Math.max(0, Math.min(200, Number(e.target.value) || 0)))}
+                        className="w-16 px-2 py-1 text-sm text-right border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-500 dark:text-gray-400">%</span>
+                    </div>
+                  </div>
                   <input
                     type="range"
                     min="0"
                     max="200"
-                    step="5"
+                    step="1"
                     value={filterMinROI}
                     onChange={(e) => setFilterMinROI(Number(e.target.value))}
                     className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
@@ -534,7 +565,7 @@ export default function Home() {
 
       {/* Modals */}
       {showWatchlist && <Watchlist onClose={() => setShowWatchlist(false)} />}
-      {showChat && <AIChat onClose={() => setShowChat(false)} />}
+      {showChat && <AIChat onClose={() => setShowChat(false)} displayedResults={filteredItems} />}
     </main>
   );
 }
