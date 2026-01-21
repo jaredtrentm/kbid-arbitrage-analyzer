@@ -254,7 +254,7 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
 
     // First, find all item blocks - look for patterns that contain item URL and bid
     const itemBlockRegex = /<(?:div|article|section|tr)[^>]*>(?:(?!<\/(?:div|article|section|tr)>)[\s\S])*?\/auction\/\d+\/item\/\d+[\s\S]*?Current Bid[\s\S]*?<\/(?:div|article|section|tr)>/gi;
-    let blockMatches = html.match(itemBlockRegex) || [];
+    const blockMatches: string[] = html.match(itemBlockRegex) || [];
 
     // If no blocks found, try splitting by item URLs and grabbing more context
     if (blockMatches.length === 0) {
