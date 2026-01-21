@@ -2,7 +2,11 @@
 // Adjust these values based on your Vercel plan and API rate limits
 
 export const SCRAPE_CONFIG = {
-  maxItems: 500,           // Maximum items to scrape (increased for Pro)
+  // Hard limit on items to scrape (cost control)
+  // Each item requires ~1 AI call for analysis + web searches
+  // At ~$0.01-0.03 per item, 200 items = ~$2-6 per full analysis
+  // Remove or increase this limit once app is monetized
+  maxItems: 200,
   batchSize: 50,           // Items per analysis batch
   parallelAuctions: 5,     // Concurrent auction scraping
   fetchTimeout: 10000,     // Fetch timeout in ms (10 seconds)

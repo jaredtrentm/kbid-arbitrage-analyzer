@@ -23,7 +23,7 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
     profit_min_dollars: 20,
     profit_min_percent: 30,
     selling_fee_percent: 13,
-    max_items: SCRAPE_CONFIG.maxItems,
+    max_items: SCRAPE_CONFIG.maxItems, // Hidden - uses config limit
     start_date: getDateString(today),
     end_date: getDateString(threeDaysLater),
     single_auction_url: '',
@@ -87,7 +87,7 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Min Profit ($)
@@ -151,18 +151,6 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
             </div>
           </>
         )}
-
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Max Items
-          </label>
-          <input
-            type="number"
-            value={params.max_items}
-            onChange={(e) => setParams(p => ({ ...p, max_items: Number(e.target.value) }))}
-            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
-          />
-        </div>
       </div>
 
       {/* Category Filter */}
