@@ -16,6 +16,7 @@ const BATCH_SIZE = SCRAPE_CONFIG.batchSize;
 
 type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing';
 type RiskFilter = 'all' | 'low' | 'medium' | 'high';
+type InterestFilter = 'all' | 'low' | 'medium' | 'high';
 
 export default function Home() {
   const [step, setStep] = useState<WorkflowStep>('idle');
@@ -34,6 +35,9 @@ export default function Home() {
 
   // Risk filter
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
+
+  // Interest filter
+  const [interestFilter, setInterestFilter] = useState<InterestFilter>('all');
 
   // Dynamic filter sliders (for results view)
   const [filterMinProfit, setFilterMinProfit] = useState<number>(0);
@@ -263,6 +267,7 @@ export default function Home() {
     setCurrentParams(null);
     setError(null);
     setRiskFilter('all');
+    setInterestFilter('all');
     setFilterMinProfit(0);
     setFilterMinROI(0);
     setIncludeShipping(true);
@@ -299,6 +304,8 @@ export default function Home() {
     .filter(item => {
       // Risk filter
       if (riskFilter !== 'all' && item.resale.riskScore !== riskFilter) return false;
+      // Interest filter
+      if (interestFilter !== 'all' && item.item.interestLevel !== interestFilter) return false;
       // Profit filter
       if (item.profit.expectedProfit < filterMinProfit) return false;
       // ROI filter
@@ -312,6 +319,14 @@ export default function Home() {
     low: analyzedItems.filter(i => i.resale.riskScore === 'low').length,
     medium: analyzedItems.filter(i => i.resale.riskScore === 'medium').length,
     high: analyzedItems.filter(i => i.resale.riskScore === 'high').length,
+  };
+
+  // Count items by interest level
+  const interestCounts = {
+    all: analyzedItems.length,
+    low: analyzedItems.filter(i => i.item.interestLevel === 'low').length,
+    medium: analyzedItems.filter(i => i.item.interestLevel === 'medium').length,
+    high: analyzedItems.filter(i => i.item.interestLevel === 'high').length,
   };
 
   return (
@@ -572,7 +587,7 @@ export default function Home() {
             </div>
 
             {/* Risk Filter */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-3">
               <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 self-center mr-1">Risk:</span>
               {(['all', 'low', 'medium', 'high'] as RiskFilter[]).map((level) => {
                 const isActive = riskFilter === level;
@@ -589,6 +604,35 @@ export default function Home() {
                     className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${colorClasses[level]}`}
                   >
                     {level.charAt(0).toUpperCase() + level.slice(1)} ({riskCounts[level]})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Interest Filter */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 self-center mr-1">Interest:</span>
+              {(['all', 'low', 'medium', 'high'] as InterestFilter[]).map((level) => {
+                const isActive = interestFilter === level;
+                const labels = {
+                  all: 'All',
+                  low: '💤 Low',
+                  medium: '👀 Medium',
+                  high: '🔥 High',
+                };
+                const colorClasses = {
+                  all: isActive ? 'bg-gray-700 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600',
+                  low: isActive ? 'bg-gray-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600',
+                  medium: isActive ? 'bg-blue-600 text-white' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900',
+                  high: isActive ? 'bg-purple-600 text-white' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900',
+                };
+                return (
+                  <button
+                    key={level}
+                    onClick={() => setInterestFilter(level)}
+                    className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${colorClasses[level]}`}
+                  >
+                    {labels[level]} ({interestCounts[level]})
                   </button>
                 );
               })}

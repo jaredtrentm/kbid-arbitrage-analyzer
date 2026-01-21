@@ -57,8 +57,10 @@ async function processItem(
     });
 
     // Check if meets profit criteria
+    // Item must be profitable AND current bid must be at or below max bid
     const meetsCriteria = profit.expectedProfit >= params.profit_min_dollars &&
-                          profit.expectedROI >= params.profit_min_percent;
+                          profit.expectedROI >= params.profit_min_percent &&
+                          item.currentBid <= profit.maxBid;
 
     const resale = await getResaleAdvice(item, valuation);
 
