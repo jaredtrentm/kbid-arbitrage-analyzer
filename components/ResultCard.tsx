@@ -5,12 +5,29 @@ import { AnalyzedItem } from '@/lib/types';
 
 interface Props {
   data: AnalyzedItem;
+  onSave?: (data: AnalyzedItem) => Promise<void>;
+  isSaved?: boolean;
 }
 
-export default function ResultCard({ data }: Props) {
+export default function ResultCard({ data, onSave, isSaved = false }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(isSaved);
   const { item, valuation, profit, resale, meetsCriteria } = data;
+
+  const handleSave = async () => {
+    if (!onSave || saving || saved) return;
+    setSaving(true);
+    try {
+      await onSave(data);
+      setSaved(true);
+    } catch (error) {
+      console.error('Failed to save:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const profitColor = profit.expectedProfit >= 100 ? 'text-green-600' :
                       profit.expectedProfit >= 50 ? 'text-green-500' :
@@ -108,6 +125,21 @@ export default function ResultCard({ data }: Props) {
           >
             {expanded ? 'Hide' : 'Details'}
           </button>
+          {onSave && (
+            <button
+              onClick={handleSave}
+              disabled={saving || saved}
+              className={`py-1.5 sm:py-2 px-3 sm:px-4 rounded text-xs sm:text-sm font-medium transition-colors
+                ${saved
+                  ? 'bg-green-100 text-green-700 cursor-default'
+                  : saving
+                    ? 'bg-gray-300 text-gray-500 cursor-wait'
+                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                }`}
+            >
+              {saved ? 'Saved' : saving ? '...' : 'Save'}
+            </button>
+          )}
           {item.auctionUrl && (
             <a
               href={item.auctionUrl}
@@ -115,7 +147,7 @@ export default function ResultCard({ data }: Props) {
               rel="noopener noreferrer"
               className="py-1.5 sm:py-2 px-3 sm:px-4 bg-blue-600 hover:bg-blue-700 rounded text-xs sm:text-sm font-medium text-white transition-colors"
             >
-              View Auction
+              View
             </a>
           )}
         </div>

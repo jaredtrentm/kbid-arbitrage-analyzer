@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ParameterForm from '@/components/ParameterForm';
 import ResultsGrid from '@/components/ResultsGrid';
 import LoadingState from '@/components/LoadingState';
 import ErrorDisplay from '@/components/ErrorDisplay';
+import Watchlist from '@/components/Watchlist';
+import AIChat from '@/components/AIChat';
 import { AnalysisParams, AnalysisResponse, RawKBidItem, AnalyzedItem } from '@/lib/types';
+import { SCRAPE_CONFIG } from '@/lib/config';
+import { WatchlistInsert } from '@/lib/supabase';
 
-const BATCH_SIZE = 25;
+const BATCH_SIZE = SCRAPE_CONFIG.batchSize;
 
 type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing';
 type RiskFilter = 'all' | 'low' | 'medium' | 'high';
@@ -30,6 +34,78 @@ export default function Home() {
   // Risk filter
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
 
+  // Modal states
+  const [showWatchlist, setShowWatchlist] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+
+  // Track saved items
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set());
+
+  // Load saved URLs on mount
+  useEffect(() => {
+    const loadSavedUrls = async () => {
+      try {
+        const response = await fetch('/api/watchlist');
+        const data = await response.json();
+        if (data.success && data.items) {
+          setSavedUrls(new Set(data.items.map((item: { auction_url: string }) => item.auction_url)));
+        }
+      } catch {
+        // Ignore errors - just means we can't show which items are already saved
+      }
+    };
+    loadSavedUrls();
+  }, []);
+
+  // Save item to watchlist
+  const handleSaveItem = async (data: AnalyzedItem) => {
+    if (!currentParams) return;
+
+    const watchlistItem: WatchlistInsert = {
+      title: data.item.title,
+      description: data.item.description,
+      category: data.item.category,
+      condition: data.item.condition,
+      size_class: data.item.sizeClass,
+      auction_url: data.item.auctionUrl,
+      image_url: data.item.imageUrl,
+      auction_end_date: data.item.auctionEndDate,
+      saved_bid: data.item.currentBid,
+      current_bid: data.item.currentBid,
+      max_bid: data.profit.maxBid,
+      estimated_value: data.valuation.estimatedValue,
+      expected_profit: data.profit.expectedProfit,
+      expected_roi: data.profit.expectedROI,
+      break_even_price: data.profit.breakEvenPrice,
+      shipping_estimate: data.profit.shippingEstimate,
+      fees: data.profit.fees,
+      valuation_low: data.valuation.lowEstimate,
+      valuation_high: data.valuation.highEstimate,
+      valuation_confidence: data.valuation.confidence,
+      valuation_reasoning: data.valuation.reasoning,
+      recommended_channel: data.resale.recommendedChannel,
+      risk_score: data.resale.riskScore,
+      risk_reasoning: data.resale.riskReasoning,
+      resale_tips: data.resale.tips,
+      profit_min_dollars: currentParams.profit_min_dollars,
+      profit_min_percent: currentParams.profit_min_percent,
+      selling_fee_percent: currentParams.selling_fee_percent,
+    };
+
+    const response = await fetch('/api/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(watchlistItem)
+    });
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to save item');
+    }
+
+    setSavedUrls(prev => new Set([...prev, data.item.auctionUrl]));
+  };
+
   const handleScrape = async (params: AnalysisParams) => {
     setStep('scraping');
     setError(null);
@@ -46,7 +122,8 @@ export default function Home() {
         body: JSON.stringify({
           max_items: params.max_items,
           start_date: params.start_date,
-          end_date: params.end_date
+          end_date: params.end_date,
+          single_auction_url: params.single_auction_url
         })
       });
 
@@ -95,7 +172,8 @@ export default function Home() {
           profit_min_dollars: currentParams.profit_min_dollars,
           profit_min_percent: currentParams.profit_min_percent,
           selling_fee_percent: currentParams.selling_fee_percent,
-          raw_items: batchItems
+          raw_items: batchItems,
+          selected_categories: currentParams.selected_categories
         })
       });
 
@@ -197,13 +275,35 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-8">
-        <header className="mb-3 sm:mb-6">
-          <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
-            K-Bid Arbitrage
-          </h1>
-          <p className="text-xs sm:text-base text-gray-600 mt-0.5 sm:mt-1">
-            Find profitable auctions with AI valuations
-          </p>
+        <header className="mb-3 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
+              K-Bid Arbitrage
+            </h1>
+            <p className="text-xs sm:text-base text-gray-600 mt-0.5 sm:mt-1">
+              Find profitable auctions with AI valuations
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowWatchlist(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              <span className="hidden sm:inline">Watchlist</span>
+            </button>
+            <button
+              onClick={() => setShowChat(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              <span className="hidden sm:inline">AI Chat</span>
+            </button>
+          </div>
         </header>
 
         {/* Parameter Form - only show when idle or after reset */}
@@ -332,7 +432,7 @@ export default function Home() {
             </div>
 
             {filteredItems.length > 0 ? (
-              <ResultsGrid items={filteredItems} />
+              <ResultsGrid items={filteredItems} onSave={handleSaveItem} savedUrls={savedUrls} />
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-600">
                 No {riskFilter} risk items found.
@@ -348,6 +448,10 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showWatchlist && <Watchlist onClose={() => setShowWatchlist(false)} />}
+      {showChat && <AIChat onClose={() => setShowChat(false)} />}
     </main>
   );
 }

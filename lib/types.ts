@@ -5,6 +5,8 @@ export interface AnalysisParams {
   max_items: number;
   start_date: string; // ISO date string (YYYY-MM-DD)
   end_date: string;   // ISO date string (YYYY-MM-DD)
+  single_auction_url?: string; // Optional: scrape a specific auction by URL
+  selected_categories?: string[]; // Optional: filter by these categories
 }
 
 export interface RawKBidItem {

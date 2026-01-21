@@ -1,4 +1,5 @@
 import { RawKBidItem } from '@/lib/types';
+import { SCRAPE_CONFIG } from '@/lib/config';
 
 interface AuctionInfo {
   url: string;
@@ -7,17 +8,26 @@ interface AuctionInfo {
   endDateTimeStr: string | null;
 }
 
-// Extract current bid from text patterns
-function extractCurrentBid(text: string): number | null {
-  // Pattern: "Current Bid: $XX.XX" or "Current Bid $XX.XX"
-  const bidMatch = text.match(/current\s*bid[:\s]*\$?([\d,]+(?:\.\d{2})?)/i);
+// Extract current bid from HTML (before stripping tags)
+function extractCurrentBidFromHtml(html: string): number | null {
+  // Pattern: <strong>Current Bid: $XX.XX</strong>
+  const strongMatch = html.match(/<strong[^>]*>Current Bid:\s*\$?([\d,]+(?:\.\d{2})?)<\/strong>/i);
+  if (strongMatch) {
+    return parseFloat(strongMatch[1].replace(/,/g, ''));
+  }
+  // Pattern: Current Bid: $XX.XX (without tags)
+  const bidMatch = html.match(/Current Bid[:\s]*\$?([\d,]+(?:\.\d{2})?)/i);
   if (bidMatch) {
     return parseFloat(bidMatch[1].replace(/,/g, ''));
   }
-  // Fallback: look for dollar amounts
-  const dollarMatch = text.match(/\$([\d,]+(?:\.\d{2})?)/);
-  if (dollarMatch) {
-    return parseFloat(dollarMatch[1].replace(/,/g, ''));
+  return null;
+}
+
+// Extract current bid from plain text (fallback)
+function extractCurrentBid(text: string): number | null {
+  const bidMatch = text.match(/current\s*bid[:\s]*\$?([\d,]+(?:\.\d{2})?)/i);
+  if (bidMatch) {
+    return parseFloat(bidMatch[1].replace(/,/g, ''));
   }
   return null;
 }
@@ -40,7 +50,7 @@ async function fetchWithRetry(url: string, retries = 1): Promise<string> {
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), SCRAPE_CONFIG.fetchTimeout);
 
       const response = await fetch(url, {
         headers: {
@@ -60,7 +70,7 @@ async function fetchWithRetry(url: string, retries = 1): Promise<string> {
     } catch (error) {
       console.error(`Fetch attempt ${i + 1} failed for ${url}:`, error);
       if (i === retries) throw error;
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, SCRAPE_CONFIG.retryDelay));
     }
   }
   throw new Error('Fetch failed after retries');
@@ -239,69 +249,81 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
       return undefined;
     };
 
-    // Look for item blocks with more context (grab surrounding HTML for bid info)
-    // K-Bid structure: each item has title in <h4>, bid info nearby, image, and link to /auction/XXX/item/Y
+    // K-Bid structure: Find sections containing both item links AND bid info
+    // Split HTML into chunks around each item link and look for bid in nearby content
 
-    // Pattern: Find all item links and grab surrounding context
-    const itemLinkRegex = /href="(\/auction\/\d+\/item\/\d+[^"]*)"/gi;
-    const itemUrls = new Set<string>();
-    let match;
+    // First, find all item blocks - look for patterns that contain item URL and bid
+    const itemBlockRegex = /<(?:div|article|section|tr)[^>]*>(?:(?!<\/(?:div|article|section|tr)>)[\s\S])*?\/auction\/\d+\/item\/\d+[\s\S]*?Current Bid[\s\S]*?<\/(?:div|article|section|tr)>/gi;
+    let blockMatches = html.match(itemBlockRegex) || [];
 
-    while ((match = itemLinkRegex.exec(html)) !== null) {
-      const itemPath = match[1].split('?')[0]; // Remove query params
-      itemUrls.add(itemPath);
+    // If no blocks found, try splitting by item URLs and grabbing more context
+    if (blockMatches.length === 0) {
+      const itemLinkRegex = /href="(\/auction\/\d+\/item\/\d+[^"]*)"/gi;
+      const seen = new Set<string>();
+      let match;
+
+      while ((match = itemLinkRegex.exec(html)) !== null) {
+        const itemPath = match[1].split('?')[0];
+        if (seen.has(itemPath)) continue;
+        seen.add(itemPath);
+
+        // Grab 3000 chars before and 2000 after to capture the bid
+        const start = Math.max(0, match.index - 3000);
+        const end = Math.min(html.length, match.index + 2000);
+        blockMatches.push(html.substring(start, end));
+      }
     }
 
-    // For each unique item URL, find its context in the HTML
-    for (const itemPath of itemUrls) {
+    for (const block of blockMatches) {
+      // Extract item URL
+      const urlMatch = block.match(/href="(\/auction\/\d+\/item\/\d+[^"]*)"/i);
+      if (!urlMatch) continue;
+
+      const itemPath = urlMatch[1].split('?')[0];
       const fullUrl = `https://www.k-bid.com${itemPath}`;
 
-      // Find the section of HTML around this item link
-      const escapedPath = itemPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const contextRegex = new RegExp(`([\\s\\S]{0,2000}${escapedPath}[\\s\\S]{0,1000})`, 'i');
-      const contextMatch = html.match(contextRegex);
+      // Skip if we already have this item
+      if (items.some(i => i.url === fullUrl)) continue;
 
-      if (contextMatch) {
-        const context = contextMatch[1];
-        const textContent = context.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const textContent = block.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
-        // Skip closed items
-        if (isClosed(textContent)) {
-          continue;
-        }
+      // Skip closed items
+      if (isClosed(textContent)) continue;
 
-        // Extract title from <h4> or alt text
-        let title = '';
-        const h4Match = context.match(/<h4[^>]*>(?:<a[^>]*>)?([^<]+)/i);
-        if (h4Match) {
-          title = h4Match[1].trim();
-        }
-        const altMatch = context.match(/alt="[^"]*image:\s*([^"]+)"/i);
-        if (!title && altMatch) {
-          title = altMatch[1].trim();
-        }
+      // Extract title from <h4> or alt text
+      let title = '';
+      const h4Match = block.match(/<h4[^>]*>(?:<a[^>]*>)?([^<]+)/i);
+      if (h4Match) {
+        title = h4Match[1].trim();
+      }
+      if (!title) {
+        const altMatch = block.match(/alt="[^"]*image:\s*([^"]+)"/i);
+        if (altMatch) title = altMatch[1].trim();
+      }
 
-        // Extract current bid
-        const currentBid = extractCurrentBid(textContent);
+      // Extract current bid from HTML
+      let currentBid = extractCurrentBidFromHtml(block);
+      if (currentBid === null) {
+        currentBid = extractCurrentBid(textContent);
+      }
 
-        // Build text with title and bid for AI
-        let itemText = title || textContent.substring(0, 200);
-        if (currentBid !== null) {
-          itemText += ` Current Bid: $${currentBid.toFixed(2)}`;
-        }
+      // Build text with title and bid for AI
+      let itemText = title || textContent.substring(0, 200);
+      if (currentBid !== null) {
+        itemText += ` Current Bid: $${currentBid.toFixed(2)}`;
+      }
 
-        // Extract image
-        const imageUrl = extractImage(context);
+      // Extract image
+      const imageUrl = extractImage(block);
 
-        if (itemText.length > 3) {
-          items.push({
-            text: itemText,
-            url: fullUrl,
-            imageUrl,
-            auctionEndDate: auctionEndDateStr || undefined,
-            currentBid: currentBid || undefined
-          });
-        }
+      if (itemText.length > 3) {
+        items.push({
+          text: itemText,
+          url: fullUrl,
+          imageUrl,
+          auctionEndDate: auctionEndDateStr || undefined,
+          currentBid: currentBid || undefined
+        });
       }
     }
 
@@ -346,7 +368,55 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
   }
 }
 
-export async function scrapeKBid(maxItems: number, startDate: string, endDate: string): Promise<RawKBidItem[]> {
+// Scrape a single auction by URL - returns all items without limit
+export async function scrapeSingleAuction(auctionUrl: string): Promise<RawKBidItem[]> {
+  try {
+    console.log(`Scraping single auction: ${auctionUrl}`);
+
+    // Validate URL format
+    if (!auctionUrl.includes('k-bid.com/auction/')) {
+      throw new Error('Invalid K-Bid auction URL. Expected format: https://www.k-bid.com/auction/12345');
+    }
+
+    // Normalize URL
+    let normalizedUrl = auctionUrl;
+    if (!normalizedUrl.startsWith('http')) {
+      normalizedUrl = `https://www.k-bid.com${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
+    }
+
+    // Get all items from the auction (no limit)
+    const items = await getAuctionItems(normalizedUrl, null);
+
+    console.log(`Found ${items.length} items in auction`);
+
+    // Deduplicate by URL
+    const seen = new Set<string>();
+    const uniqueItems = items.filter(item => {
+      const key = item.url || item.text.substring(0, 100);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return uniqueItems;
+  } catch (error) {
+    console.error('Single auction scraping error:', error);
+    throw new Error(`Failed to scrape auction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+export async function scrapeKBid(
+  maxItems: number,
+  startDate: string,
+  endDate: string,
+  singleAuctionUrl?: string
+): Promise<RawKBidItem[]> {
+  // If single auction URL provided, use that instead of date range search
+  if (singleAuctionUrl) {
+    const items = await scrapeSingleAuction(singleAuctionUrl);
+    return maxItems > 0 ? items.slice(0, maxItems) : items;
+  }
+
   try {
     const now = new Date();
     const minEndDate = new Date(startDate + 'T00:00:00');
@@ -378,8 +448,8 @@ export async function scrapeKBid(maxItems: number, startDate: string, endDate: s
     const openAuctions = auctions.filter(a => a.endDateTime === null || a.endDateTime > now);
     const auctionsToScrape = filteredAuctions.length > 0 ? filteredAuctions : openAuctions.slice(0, 10);
 
-    // Step 3: Scrape items from auctions in parallel (limit to 3 for Hobby plan timeout)
-    const maxAuctions = Math.min(auctionsToScrape.length, 3);
+    // Step 3: Scrape items from auctions in parallel
+    const maxAuctions = Math.min(auctionsToScrape.length, SCRAPE_CONFIG.parallelAuctions);
     const auctionBatch = auctionsToScrape.slice(0, maxAuctions);
 
     console.log(`Scraping ${maxAuctions} auctions in parallel...`);

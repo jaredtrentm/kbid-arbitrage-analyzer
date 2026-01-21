@@ -3,9 +3,11 @@ import ResultCard from './ResultCard';
 
 interface Props {
   items: AnalyzedItem[];
+  onSave?: (data: AnalyzedItem) => Promise<void>;
+  savedUrls?: Set<string>;
 }
 
-export default function ResultsGrid({ items }: Props) {
+export default function ResultsGrid({ items, onSave, savedUrls }: Props) {
   if (items.length === 0) {
     return (
       <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">
@@ -25,7 +27,12 @@ export default function ResultsGrid({ items }: Props) {
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {items.map((item, index) => (
-          <ResultCard key={item.item.id || index} data={item} />
+          <ResultCard
+            key={item.item.id || index}
+            data={item}
+            onSave={onSave}
+            isSaved={savedUrls?.has(item.item.auctionUrl) ?? false}
+          />
         ))}
       </div>
     </div>

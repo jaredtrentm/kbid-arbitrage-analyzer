@@ -4,6 +4,7 @@ import { getValuation } from '@/services/webSearchValuation';
 import { calculateProfit } from '@/services/profitCalculator';
 import { getResaleAdvice } from '@/services/resaleAdvisor';
 import { AnalyzedItem, AnalysisResponse, ParsedItem, RawKBidItem } from '@/lib/types';
+import { mapToFilterCategory, CATEGORY_OPTIONS } from '@/lib/config';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ interface BatchAnalysisParams {
   profit_min_percent: number;
   selling_fee_percent: number;
   raw_items: RawKBidItem[]; // Items to analyze (from scrape-items endpoint)
+  selected_categories?: string[]; // Optional category filter
 }
 
 async function processItem(
@@ -137,8 +139,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     console.log(`Parsed ${parsedItems.length} items`);
 
     // Filter out excluded items
-    const eligibleItems = parsedItems.filter(item => !item.excluded);
-    console.log(`${eligibleItems.length} eligible items after filtering`);
+    let eligibleItems = parsedItems.filter(item => !item.excluded);
+    console.log(`${eligibleItems.length} eligible items after filtering exclusions`);
+
+    // Filter by selected categories if provided
+    const selectedCategories = params.selected_categories;
+    if (selectedCategories && selectedCategories.length > 0 && selectedCategories.length < CATEGORY_OPTIONS.length) {
+      eligibleItems = eligibleItems.filter(item => {
+        const mappedCategory = mapToFilterCategory(item.category);
+        return selectedCategories.includes(mappedCategory);
+      });
+      console.log(`${eligibleItems.length} items after category filtering (selected: ${selectedCategories.join(', ')})`);
+    }
 
     if (eligibleItems.length === 0) {
       return NextResponse.json({
@@ -150,7 +162,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
           totalProfitable: 0,
           errors: 0
         },
-        error: 'No eligible items found after filtering exclusions'
+        error: 'No eligible items found after filtering'
       });
     }
 
