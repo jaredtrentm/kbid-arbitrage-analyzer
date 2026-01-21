@@ -316,9 +316,19 @@ export default function Home() {
         {/* Scraping State */}
         {step === 'scraping' && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-4">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-              <span className="text-gray-700">Scraping K-Bid auctions...</span>
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                <span className="text-gray-700 font-medium">Scraping K-Bid auction...</span>
+              </div>
+              <div className="w-full max-w-md">
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                </div>
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  Fetching items, extracting bids and images...
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -385,7 +395,13 @@ export default function Home() {
         )}
 
         {/* Analyzing Loading State */}
-        {step === 'analyzing' && <LoadingState />}
+        {step === 'analyzing' && (
+          <LoadingState
+            batchSize={BATCH_SIZE}
+            currentBatch={batchIndex + 1}
+            totalItems={rawItems.length - (batchIndex * BATCH_SIZE)}
+          />
+        )}
 
         {/* Error Display */}
         {error && (
