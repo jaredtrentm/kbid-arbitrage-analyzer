@@ -15,6 +15,19 @@ const EXCLUDED_CATEGORIES = [
   'construction'
 ];
 
+// Calculate interest level based on bid activity
+function calculateInterestLevel(bidCount?: number, bidderCount?: number): 'low' | 'medium' | 'high' {
+  const bids = bidCount || 0;
+  const bidders = bidderCount || 0;
+
+  // High interest: 5+ bids or 3+ bidders
+  if (bids >= 5 || bidders >= 3) return 'high';
+  // Medium interest: 2-4 bids or 2 bidders
+  if (bids >= 2 || bidders >= 2) return 'medium';
+  // Low interest: 0-1 bids
+  return 'low';
+}
+
 export async function extractItemDetails(rawItems: RawKBidItem[]): Promise<ParsedItem[]> {
   const results: ParsedItem[] = [];
 
@@ -112,7 +125,10 @@ Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.
           shippingAvailable: parsed.shippingAvailable ?? false,
           excluded: parsed.excluded || false,
           excludeReason: parsed.excludeReason || undefined,
-          auctionEndDate: item.auctionEndDate
+          auctionEndDate: item.auctionEndDate,
+          bidCount: item.bidCount,
+          bidderCount: item.bidderCount,
+          interestLevel: calculateInterestLevel(item.bidCount, item.bidderCount)
         } as ParsedItem;
 
       } catch (error) {

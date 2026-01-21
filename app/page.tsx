@@ -39,6 +39,9 @@ export default function Home() {
   const [filterMinProfit, setFilterMinProfit] = useState<number>(0);
   const [filterMinROI, setFilterMinROI] = useState<number>(0);
 
+  // Shipping toggle - when off, recalculates assuming local pickup
+  const [includeShipping, setIncludeShipping] = useState<boolean>(true);
+
   // Modal states
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -262,6 +265,7 @@ export default function Home() {
     setRiskFilter('all');
     setFilterMinProfit(0);
     setFilterMinROI(0);
+    setIncludeShipping(true);
   };
 
   const isLoading = step === 'scraping' || step === 'analyzing';
@@ -269,16 +273,38 @@ export default function Home() {
   const analyzedCount = batchIndex * BATCH_SIZE;
   const nextBatchEnd = Math.min((batchIndex + 1) * BATCH_SIZE, rawItems.length);
 
-  // Filter items by risk level, min profit, and min ROI
-  const filteredItems = analyzedItems.filter(item => {
-    // Risk filter
-    if (riskFilter !== 'all' && item.resale.riskScore !== riskFilter) return false;
-    // Profit filter
-    if (item.profit.expectedProfit < filterMinProfit) return false;
-    // ROI filter
-    if (item.profit.expectedROI < filterMinROI) return false;
-    return true;
-  });
+  // Adjust item values based on shipping toggle and filter
+  const filteredItems = analyzedItems
+    .map(item => {
+      // If shipping is excluded, recalculate profit values
+      if (!includeShipping) {
+        const shippingSavings = item.profit.shippingEstimate;
+        const adjustedProfit = item.profit.expectedProfit + shippingSavings;
+        const adjustedMaxBid = item.profit.maxBid + shippingSavings;
+        const adjustedROI = adjustedMaxBid > 0 ? (adjustedProfit / adjustedMaxBid) * 100 : 0;
+        return {
+          ...item,
+          profit: {
+            ...item.profit,
+            expectedProfit: adjustedProfit,
+            expectedROI: adjustedROI,
+            maxBid: adjustedMaxBid,
+            breakEvenPrice: item.profit.breakEvenPrice + shippingSavings,
+            shippingEstimate: 0 // Show as 0 when excluded
+          }
+        };
+      }
+      return item;
+    })
+    .filter(item => {
+      // Risk filter
+      if (riskFilter !== 'all' && item.resale.riskScore !== riskFilter) return false;
+      // Profit filter
+      if (item.profit.expectedProfit < filterMinProfit) return false;
+      // ROI filter
+      if (item.profit.expectedROI < filterMinROI) return false;
+      return true;
+    });
 
   // Count items by risk level
   const riskCounts = {
@@ -519,6 +545,29 @@ export default function Home() {
                     <span>200%</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Shipping Toggle */}
+              <div className="sm:col-span-2 pt-2 border-t border-gray-200 dark:border-gray-700 mt-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Include Shipping Costs
+                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {includeShipping ? 'Calculating with shipping' : 'Local pickup assumed (no shipping)'}
+                    </p>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={includeShipping}
+                      onChange={(e) => setIncludeShipping(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </div>
+                </label>
               </div>
             </div>
 

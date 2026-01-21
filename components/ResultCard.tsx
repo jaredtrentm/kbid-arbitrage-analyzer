@@ -37,6 +37,10 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
                     resale.riskScore === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300' :
                     'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300';
 
+  const interestColor = item.interestLevel === 'high' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300' :
+                        item.interestLevel === 'medium' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300' :
+                        'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
+
   // Card border color based on meetsCriteria
   const cardBorder = meetsCriteria ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-gray-300 dark:border-l-gray-600';
 
@@ -99,15 +103,22 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
           </div>
         </div>
 
-        {/* ROI and Risk row */}
-        <div className="flex items-center justify-between mb-2 sm:mb-3">
+        {/* ROI, Interest, and Risk row */}
+        <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
           <div className="flex items-center gap-1 sm:gap-2">
             <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">ROI:</span>
             <span className={`font-bold text-sm sm:text-base ${profitColor}`}>{profit.expectedROI.toFixed(0)}%</span>
           </div>
-          <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium ${riskColor}`}>
-            {resale.riskScore} risk
-          </span>
+          <div className="flex items-center gap-1.5">
+            {item.interestLevel && (
+              <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium ${interestColor}`}>
+                {item.interestLevel === 'high' ? '🔥' : item.interestLevel === 'medium' ? '👀' : '💤'}
+              </span>
+            )}
+            <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium ${riskColor}`}>
+              {resale.riskScore} risk
+            </span>
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -158,10 +169,25 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
             <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-1">Costs</h4>
             <div className="text-gray-600 dark:text-gray-400 grid grid-cols-2 gap-1">
               <span>Shipping: ${profit.shippingEstimate}</span>
-              <span>Fees: ${profit.fees.toFixed(0)}</span>
+              <span>Fees (platform): ${profit.fees.toFixed(0)}</span>
               <span className="col-span-2">Break-even: ${profit.breakEvenPrice.toFixed(0)}</span>
             </div>
           </div>
+
+          {(item.bidCount !== undefined || item.bidderCount !== undefined) && (
+            <div className="mb-2 sm:mb-3">
+              <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-1">Bid Activity</h4>
+              <div className="text-gray-600 dark:text-gray-400 flex items-center gap-3">
+                {item.bidCount !== undefined && <span>{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>}
+                {item.bidderCount !== undefined && <span>{item.bidderCount} bidder{item.bidderCount !== 1 ? 's' : ''}</span>}
+                {item.interestLevel && (
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${interestColor}`}>
+                    {item.interestLevel} interest
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="mb-2 sm:mb-3">
             <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-1">Resale</h4>

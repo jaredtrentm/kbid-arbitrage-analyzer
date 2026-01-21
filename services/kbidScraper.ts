@@ -32,6 +32,40 @@ function extractCurrentBid(text: string): number | null {
   return null;
 }
 
+// Extract bid count from HTML/text
+function extractBidCount(text: string): number | null {
+  // Pattern: "X bids" or "Bids: X" or "X Bid(s)"
+  const patterns = [
+    /(\d+)\s*bids?\b/i,
+    /bids?[:\s]*(\d+)/i,
+    /bid\s*count[:\s]*(\d+)/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  }
+  return null;
+}
+
+// Extract bidder count from HTML/text
+function extractBidderCount(text: string): number | null {
+  // Pattern: "X bidders" or "from X bidders" or "Bidders: X"
+  const patterns = [
+    /(\d+)\s*bidders?\b/i,
+    /from\s*(\d+)\s*bidders?/i,
+    /bidders?[:\s]*(\d+)/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  }
+  return null;
+}
+
 // Check if item/auction is closed
 function isClosed(text: string): boolean {
   const closedPatterns = [
@@ -316,13 +350,19 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
       // Extract image
       const imageUrl = extractImage(block);
 
+      // Extract bid activity
+      const bidCount = extractBidCount(textContent);
+      const bidderCount = extractBidderCount(textContent);
+
       if (itemText.length > 3) {
         items.push({
           text: itemText,
           url: fullUrl,
           imageUrl,
           auctionEndDate: auctionEndDateStr || undefined,
-          currentBid: currentBid || undefined
+          currentBid: currentBid || undefined,
+          bidCount: bidCount || undefined,
+          bidderCount: bidderCount || undefined
         });
       }
     }
@@ -348,6 +388,8 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
 
         const imageUrl = extractImage(content);
         const currentBid = extractCurrentBid(text);
+        const bidCount = extractBidCount(text);
+        const bidderCount = extractBidderCount(text);
 
         if (text.length > 3 && text.length < 1000) {
           items.push({
@@ -355,7 +397,9 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
             url,
             imageUrl,
             auctionEndDate: auctionEndDateStr || undefined,
-            currentBid: currentBid || undefined
+            currentBid: currentBid || undefined,
+            bidCount: bidCount || undefined,
+            bidderCount: bidderCount || undefined
           });
         }
       }

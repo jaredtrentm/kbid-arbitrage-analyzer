@@ -15,6 +15,8 @@ export interface RawKBidItem {
   imageUrl?: string;
   auctionEndDate?: string;
   currentBid?: number; // Pre-extracted bid price from scraper
+  bidCount?: number;   // Number of bids placed
+  bidderCount?: number; // Number of unique bidders
 }
 
 export interface ParsedItem {
@@ -31,6 +33,9 @@ export interface ParsedItem {
   excluded: boolean;
   excludeReason?: string;
   auctionEndDate?: string;
+  bidCount?: number;
+  bidderCount?: number;
+  interestLevel?: 'low' | 'medium' | 'high';
 }
 
 export interface ValuationResult {
