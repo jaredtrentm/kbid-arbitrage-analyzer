@@ -3,6 +3,32 @@ import { RawKBidItem, ParsedItem } from '@/lib/types';
 
 const anthropic = new Anthropic();
 
+// Fetch image and convert to base64
+async function fetchImageAsBase64(url: string): Promise<{ data: string; mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' } | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+
+    // Map content type to supported media types
+    let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/jpeg';
+    if (contentType.includes('png')) mediaType = 'image/png';
+    else if (contentType.includes('gif')) mediaType = 'image/gif';
+    else if (contentType.includes('webp')) mediaType = 'image/webp';
+
+    return { data: base64, mediaType };
+  } catch (error) {
+    console.error('Failed to fetch image:', url, error);
+    return null;
+  }
+}
+
 // Categories to exclude from analysis
 const EXCLUDED_CATEGORIES = [
   'coins',
@@ -20,11 +46,18 @@ function calculateInterestLevel(bidCount?: number, bidderCount?: number): 'low' 
   const bids = bidCount || 0;
   const bidders = bidderCount || 0;
 
-  // High interest: 5+ bids or 3+ bidders
-  if (bids >= 5 || bidders >= 3) return 'high';
-  // Medium interest: 2-4 bids or 2 bidders
-  if (bids >= 2 || bidders >= 2) return 'medium';
-  // Low interest: 0-1 bids
+  // Calculate average bids per bidder (competitive indicator)
+  const bidsPerBidder = bidders > 0 ? bids / bidders : 0;
+
+  // High interest: Multiple bidders actively competing (back-and-forth bidding)
+  // At least 2 bidders AND averaging 3+ bids each
+  if (bidders >= 2 && bidsPerBidder >= 3) return 'high';
+
+  // Medium interest: People are clearly watching/engaged
+  // Multiple bidders OR meaningful bid activity
+  if (bidders >= 2 || bids >= 4) return 'medium';
+
+  // Low interest: Minimal activity
   return 'low';
 }
 
@@ -39,12 +72,29 @@ export async function extractItemDetails(rawItems: RawKBidItem[]): Promise<Parse
 
     const batchPromises = batch.map(async (item, index) => {
       try {
-        const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: `Analyze this K-Bid auction item and extract details as JSON.
+        // Build message content - include image if available
+        const messageContent: Anthropic.MessageCreateParams['messages'][0]['content'] = [];
+
+        // Add image if available (fetch and convert to base64)
+        let hasImage = false;
+        if (item.imageUrl) {
+          const imageData = await fetchImageAsBase64(item.imageUrl);
+          if (imageData) {
+            messageContent.push({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: imageData.mediaType,
+                data: imageData.data
+              }
+            });
+            hasImage = true;
+          }
+        }
+
+        // Add text prompt
+        const prompt = `Analyze this K-Bid auction item and extract details as JSON.
+${hasImage ? '\nIMAGE: An image of the item is provided above. Use it to assess condition, verify the item matches the description, and note any visible details (e.g., if electronics are powered on, signs of wear, missing parts, etc.).' : ''}
 
 RAW TEXT:
 ${item.text}
@@ -54,7 +104,7 @@ URL: ${item.url}
 Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 {
   "title": "concise item title",
-  "description": "brief description",
+  "description": "brief description based on text AND image observations",
   "currentBid": 0,
   "category": "category name",
   "condition": "new/like-new/good/fair/poor/unknown",
@@ -65,6 +115,7 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 }
 
 Rules:
+- condition: Base this on the IMAGE if available. If you can see the item is working (e.g., lights are on, display is active), note that. Look for wear, damage, rust, missing parts, etc.
 - currentBid: Extract the dollar amount if visible, otherwise use 0
 - sizeClass: small (<5lbs, fits in shoebox), medium (5-30lbs), large (30-70lbs), oversized (>70lbs or furniture)
 - shippingAvailable: Set true if text mentions "shipping available", "will ship", "shipping offered", or similar. Set false if "pickup only", "local pickup", "no shipping", or if item is too large to ship reasonably.
@@ -77,7 +128,16 @@ Rules:
   * Items impossible to resell online
 - excludeReason: If excluded, explain why
 
-Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.`
+Extract the current bid price from patterns like "$XX", "Current Bid: $XX", etc.`;
+
+        messageContent.push({ type: 'text', text: prompt });
+
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          messages: [{
+            role: 'user',
+            content: messageContent
           }]
         });
 
