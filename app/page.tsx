@@ -302,14 +302,16 @@ export default function Home() {
       return item;
     })
     .filter(item => {
+      // Exclude overbid items (current bid > max bid) - these go to Worst Deals
+      if (item.item.currentBid > item.profit.maxBid) return false;
       // Risk filter
       if (riskFilter !== 'all' && item.resale.riskScore !== riskFilter) return false;
       // Interest filter
       if (interestFilter !== 'all' && item.item.interestLevel !== interestFilter) return false;
-      // Profit filter
-      if (item.profit.expectedProfit < filterMinProfit) return false;
-      // ROI filter
-      if (item.profit.expectedROI < filterMinROI) return false;
+      // Profit filter - use actual profit at current bid
+      if (item.profit.actualProfit < filterMinProfit) return false;
+      // ROI filter - use actual ROI at current bid
+      if (item.profit.actualROI < filterMinROI) return false;
       return true;
     });
 

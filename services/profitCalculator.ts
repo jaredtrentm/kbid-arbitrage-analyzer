@@ -36,9 +36,13 @@ export function calculateProfit(
   // Take the lower of the two to satisfy both requirements
   const maxBid = Math.max(0, Math.min(maxBidForDollarProfit, maxBidForROI));
 
-  // Calculate expected profit and ROI at max bid
+  // Calculate expected profit and ROI at max bid (target metrics)
   const expectedProfit = netProceeds - maxBid;
   const expectedROI = maxBid > 0 ? (expectedProfit / maxBid) * 100 : 0;
+
+  // Calculate actual profit and ROI at current bid
+  const actualProfit = netProceeds - item.currentBid;
+  const actualROI = item.currentBid > 0 ? (actualProfit / item.currentBid) * 100 : 0;
 
   // Break-even price (where profit = 0)
   const breakEvenPrice = netProceeds;
@@ -47,6 +51,8 @@ export function calculateProfit(
     maxBid: Math.round(maxBid * 100) / 100,
     expectedProfit: Math.round(expectedProfit * 100) / 100,
     expectedROI: Math.round(expectedROI * 100) / 100,
+    actualProfit: Math.round(actualProfit * 100) / 100,
+    actualROI: Math.round(actualROI * 100) / 100,
     breakEvenPrice: Math.round(breakEvenPrice * 100) / 100,
     shippingEstimate,
     fees: Math.round(fees * 100) / 100

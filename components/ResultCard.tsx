@@ -29,9 +29,13 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
     }
   };
 
-  const profitColor = profit.expectedProfit >= 100 ? 'text-green-600 dark:text-green-400' :
-                      profit.expectedProfit >= 50 ? 'text-green-500 dark:text-green-400' :
-                      profit.expectedProfit > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-500 dark:text-red-400';
+  // Use actual profit (at current bid) for color coding
+  const actualProfitColor = profit.actualProfit >= 100 ? 'text-green-600 dark:text-green-400' :
+                            profit.actualProfit >= 50 ? 'text-green-500 dark:text-green-400' :
+                            profit.actualProfit > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-500 dark:text-red-400';
+
+  // Is current bid already over max bid?
+  const isOverbid = item.currentBid > profit.maxBid;
 
   const riskColor = resale.riskScore === 'low' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' :
                     resale.riskScore === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300' :
@@ -99,15 +103,27 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Profit:</span>
-            <span className={`font-bold ${profitColor}`}>${profit.expectedProfit.toFixed(0)}</span>
+            <span className={`font-bold ${actualProfitColor}`}>${profit.actualProfit.toFixed(0)}</span>
           </div>
         </div>
 
-        {/* ROI, Interest, and Risk row */}
+        {/* ROI row - show both actual and target */}
         <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
           <div className="flex items-center gap-1 sm:gap-2">
             <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">ROI:</span>
-            <span className={`font-bold text-sm sm:text-base ${profitColor}`}>{profit.expectedROI.toFixed(0)}%</span>
+            <span className={`font-bold text-sm sm:text-base ${actualProfitColor}`} title="ROI at current bid">
+              {profit.actualROI.toFixed(0)}%
+            </span>
+            {!isOverbid && (
+              <span className="text-xs text-gray-400 dark:text-gray-500" title="Target ROI at max bid">
+                ({profit.expectedROI.toFixed(0)}% @max)
+              </span>
+            )}
+            {isOverbid && (
+              <span className="text-xs text-red-500 dark:text-red-400 font-medium">
+                OVERBID
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             {item.interestLevel && (

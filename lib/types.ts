@@ -49,8 +49,10 @@ export interface ValuationResult {
 
 export interface ProfitAnalysis {
   maxBid: number;
-  expectedProfit: number;
-  expectedROI: number;
+  expectedProfit: number;      // Profit if buying at maxBid (target)
+  expectedROI: number;         // ROI if buying at maxBid (target)
+  actualProfit: number;        // Profit if buying at current bid
+  actualROI: number;           // ROI if buying at current bid
   breakEvenPrice: number;
   shippingEstimate: number;
   fees: number;

@@ -33,6 +33,8 @@ async function processItem(
           maxBid: 0,
           expectedProfit: 0,
           expectedROI: 0,
+          actualProfit: 0,
+          actualROI: 0,
           breakEvenPrice: 0,
           shippingEstimate: 0,
           fees: 0
