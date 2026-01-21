@@ -62,8 +62,8 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-3 sm:p-6">
-      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Analysis Parameters</h2>
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-6">
+      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800 dark:text-gray-100">Analysis Parameters</h2>
 
       {/* Single Auction URL Toggle */}
       <div className="mb-4">
@@ -74,7 +74,7 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
             onChange={(e) => setUseSingleAuction(e.target.checked)}
             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
-          <span className="text-sm font-medium text-gray-700">Scrape specific auction URL</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Scrape specific auction URL</span>
         </label>
         {useSingleAuction && (
           <input
@@ -82,85 +82,85 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
             placeholder="https://www.k-bid.com/auction/281702"
             value={params.single_auction_url || ''}
             onChange={(e) => setParams(p => ({ ...p, single_auction_url: e.target.value }))}
-            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+            className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
           />
         )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Min Profit ($)
           </label>
           <input
             type="number"
             value={params.profit_min_dollars}
             onChange={(e) => setParams(p => ({ ...p, profit_min_dollars: Number(e.target.value) }))}
-            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Min ROI (%)
           </label>
           <input
             type="number"
             value={params.profit_min_percent}
             onChange={(e) => setParams(p => ({ ...p, profit_min_percent: Number(e.target.value) }))}
-            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Fees (%)
           </label>
           <input
             type="number"
             value={params.selling_fee_percent}
             onChange={(e) => setParams(p => ({ ...p, selling_fee_percent: Number(e.target.value) }))}
-            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
           />
         </div>
 
         {!useSingleAuction && (
           <>
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Start Date
               </label>
               <input
                 type="date"
                 value={params.start_date}
                 onChange={(e) => setParams(p => ({ ...p, start_date: e.target.value }))}
-                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 End Date
               </label>
               <input
                 type="date"
                 value={params.end_date}
                 onChange={(e) => setParams(p => ({ ...p, end_date: e.target.value }))}
-                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
               />
             </div>
           </>
         )}
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Max Items
           </label>
           <input
             type="number"
             value={params.max_items}
             onChange={(e) => setParams(p => ({ ...p, max_items: Number(e.target.value) }))}
-            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
+            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
           />
         </div>
       </div>
@@ -168,22 +168,22 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
       {/* Category Filter */}
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs sm:text-sm font-medium text-gray-700">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
             Categories to Include
           </label>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={handleSelectAllCategories}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
               Select All
             </button>
-            <span className="text-gray-300">|</span>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
             <button
               type="button"
               onClick={handleClearCategories}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
               Clear
             </button>
@@ -198,7 +198,7 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
                 onChange={() => handleCategoryToggle(category)}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
               />
-              <span className="text-xs sm:text-sm text-gray-700">{category}</span>
+              <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{category}</span>
             </label>
           ))}
         </div>
@@ -209,7 +209,7 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
         disabled={isLoading || (params.selected_categories?.length === 0)}
         className={`mt-3 sm:mt-6 w-full py-2.5 sm:py-3 px-4 rounded-md font-medium text-white text-sm sm:text-base transition-colors
           ${isLoading || (params.selected_categories?.length === 0)
-            ? 'bg-gray-400 cursor-not-allowed'
+            ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
           }`}
       >

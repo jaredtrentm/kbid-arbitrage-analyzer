@@ -74,10 +74,10 @@ export default function Watchlist({ onClose }: Props) {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading watchlist...</span>
+            <span className="ml-3 text-gray-600 dark:text-gray-300">Loading watchlist...</span>
           </div>
         </div>
       </div>
@@ -86,12 +86,12 @@ export default function Watchlist({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">Watchlist</h2>
-            <p className="text-sm text-gray-500">{items.length} saved items</p>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Watchlist</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{items.length} saved items</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -99,17 +99,17 @@ export default function Watchlist({ onClose }: Props) {
               disabled={refreshing}
               className={`px-3 py-1.5 rounded text-sm font-medium transition-colors
                 ${refreshing
-                  ? 'bg-gray-200 text-gray-500 cursor-wait'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-wait'
+                  : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900'
                 }`}
             >
               {refreshing ? 'Refreshing...' : 'Refresh Prices'}
             </button>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -118,7 +118,7 @@ export default function Watchlist({ onClose }: Props) {
 
         {/* Error message */}
         {error && (
-          <div className="mx-4 mt-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+          <div className="mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
             {error}
           </div>
         )}
@@ -126,7 +126,7 @@ export default function Watchlist({ onClose }: Props) {
         {/* Items list */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <p className="text-lg mb-2">No items in watchlist</p>
               <p className="text-sm">Save items from your analysis results to track them here.</p>
             </div>
@@ -140,14 +140,14 @@ export default function Watchlist({ onClose }: Props) {
                   <div
                     key={item.id}
                     className={`border rounded-lg p-3 sm:p-4 transition-colors
-                      ${flagged ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}
+                      ${flagged ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}
                       ${closed ? 'opacity-60' : ''}
                     `}
                   >
                     <div className="flex gap-3">
                       {/* Image */}
                       {item.image_url && (
-                        <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                        <div className="w-20 h-20 flex-shrink-0 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden">
                           <img
                             src={item.image_url}
                             alt={item.title}
@@ -162,7 +162,7 @@ export default function Watchlist({ onClose }: Props) {
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-gray-800 text-sm sm:text-base truncate">
+                              <h3 className="font-medium text-gray-800 dark:text-gray-100 text-sm sm:text-base truncate">
                                 {item.title}
                               </h3>
                               {flagged && (
@@ -176,14 +176,14 @@ export default function Watchlist({ onClose }: Props) {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                               {item.category} | {item.recommended_channel}
                               {item.auction_end_date && ` | Ends: ${item.auction_end_date}`}
                             </p>
                           </div>
                           <button
                             onClick={() => handleDelete(item.id)}
-                            className="p-1.5 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition-colors"
+                            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/50 rounded text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors"
                             title="Remove from watchlist"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,8 +195,8 @@ export default function Watchlist({ onClose }: Props) {
                         {/* Price info */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs sm:text-sm">
                           <div>
-                            <span className="text-gray-500">Current Bid:</span>
-                            <span className={`ml-1 font-medium ${flagged ? 'text-red-600' : 'text-gray-900'}`}>
+                            <span className="text-gray-500 dark:text-gray-400">Current Bid:</span>
+                            <span className={`ml-1 font-medium ${flagged ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
                               ${item.current_bid.toFixed(0)}
                             </span>
                             {item.current_bid !== item.saved_bid && (
@@ -206,16 +206,16 @@ export default function Watchlist({ onClose }: Props) {
                             )}
                           </div>
                           <div>
-                            <span className="text-gray-500">Max Bid:</span>
-                            <span className="ml-1 font-medium text-blue-600">${item.max_bid.toFixed(0)}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Max Bid:</span>
+                            <span className="ml-1 font-medium text-blue-600 dark:text-blue-400">${item.max_bid.toFixed(0)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Value:</span>
-                            <span className="ml-1 font-medium text-gray-900">${item.estimated_value.toFixed(0)}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Value:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">${item.estimated_value.toFixed(0)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Profit:</span>
-                            <span className={`ml-1 font-bold ${flagged ? 'text-red-600' : 'text-green-600'}`}>
+                            <span className="text-gray-500 dark:text-gray-400">Profit:</span>
+                            <span className={`ml-1 font-bold ${flagged ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                               ${flagged
                                 ? (item.estimated_value - item.current_bid - item.fees - item.shipping_estimate).toFixed(0)
                                 : item.expected_profit.toFixed(0)
@@ -226,7 +226,7 @@ export default function Watchlist({ onClose }: Props) {
 
                         {/* Warning message for flagged items */}
                         {flagged && (
-                          <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700">
+                          <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/50 rounded text-xs text-red-700 dark:text-red-300">
                             Current bid (${item.current_bid.toFixed(0)}) exceeds your max bid (${item.max_bid.toFixed(0)}) by ${(item.current_bid - item.max_bid).toFixed(0)}.
                             This item no longer meets your ROI/profit requirements.
                           </div>
@@ -243,9 +243,9 @@ export default function Watchlist({ onClose }: Props) {
                             View Auction
                           </a>
                           <span className={`px-2 py-1 rounded text-xs font-medium
-                            ${item.risk_score === 'low' ? 'bg-green-100 text-green-800' :
-                              item.risk_score === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
+                            ${item.risk_score === 'low' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' :
+                              item.risk_score === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300' :
+                              'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
                             }`}
                           >
                             {item.risk_score} risk
@@ -262,21 +262,21 @@ export default function Watchlist({ onClose }: Props) {
 
         {/* Summary footer */}
         {items.length > 0 && (
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             <div className="flex flex-wrap gap-4 text-sm">
               <div>
-                <span className="text-gray-500">Total Items:</span>
-                <span className="ml-1 font-medium">{items.length}</span>
+                <span className="text-gray-500 dark:text-gray-400">Total Items:</span>
+                <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">{items.length}</span>
               </div>
               <div>
-                <span className="text-gray-500">Flagged:</span>
-                <span className="ml-1 font-medium text-red-600">
+                <span className="text-gray-500 dark:text-gray-400">Flagged:</span>
+                <span className="ml-1 font-medium text-red-600 dark:text-red-400">
                   {items.filter(isFlagged).length}
                 </span>
               </div>
               <div>
-                <span className="text-gray-500">Potential Profit:</span>
-                <span className="ml-1 font-medium text-green-600">
+                <span className="text-gray-500 dark:text-gray-400">Potential Profit:</span>
+                <span className="ml-1 font-medium text-green-600 dark:text-green-400">
                   ${items.filter(i => !isFlagged(i)).reduce((sum, i) => sum + i.expected_profit, 0).toFixed(0)}
                 </span>
               </div>

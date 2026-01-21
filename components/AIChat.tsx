@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -79,9 +80,9 @@ export default function AIChat({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full mx-4 h-[80vh] max-h-[600px] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full mx-4 h-[80vh] max-h-[600px] flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,18 +90,28 @@ export default function AIChat({ onClose }: Props) {
               </svg>
             </div>
             <div>
-              <h2 className="font-semibold text-gray-800">AI Assistant</h2>
-              <p className="text-xs text-gray-500">Auction & Resale Expert</p>
+              <h2 className="font-semibold text-gray-800 dark:text-gray-100">AI Assistant</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Auction & Resale Expert</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           >
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        {/* AI Disclaimer */}
+        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800">
+          <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            AI responses may be inaccurate. Always verify valuations before bidding.
+          </p>
         </div>
 
         {/* Messages */}
@@ -114,19 +125,25 @@ export default function AIChat({ onClose }: Props) {
                 className={`max-w-[80%] rounded-lg px-4 py-2 ${
                   message.role === 'user'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-800'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
                 }`}
               >
-                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                {message.role === 'assistant' ? (
+                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                )}
               </div>
             </div>
           ))}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg px-4 py-2">
+              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-2">
                 <div className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                  <span className="text-sm text-gray-600">Thinking...</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Thinking...</span>
                 </div>
               </div>
             </div>
@@ -136,14 +153,14 @@ export default function AIChat({ onClose }: Props) {
 
         {/* Quick questions */}
         {messages.length <= 2 && (
-          <div className="px-4 py-2 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-2">Quick questions:</p>
+          <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick questions:</p>
             <div className="flex flex-wrap gap-2">
               {quickQuestions.map((question, index) => (
                 <button
                   key={index}
                   onClick={() => handleQuickQuestion(question)}
-                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-700 transition-colors"
+                  className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full text-xs text-gray-700 dark:text-gray-300 transition-colors"
                 >
                   {question}
                 </button>
@@ -153,14 +170,14 @@ export default function AIChat({ onClose }: Props) {
         )}
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+        <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about auctions, reselling, or your watchlist..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-gray-900"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
               disabled={loading}
             />
             <button
@@ -168,7 +185,7 @@ export default function AIChat({ onClose }: Props) {
               disabled={loading || !input.trim()}
               className={`px-4 py-2 rounded-lg font-medium text-white transition-colors
                 ${loading || !input.trim()
-                  ? 'bg-gray-300 cursor-not-allowed'
+                  ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
                   : 'bg-purple-600 hover:bg-purple-700'
                 }`}
             >

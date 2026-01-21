@@ -5,8 +5,8 @@ interface Props {
 
 export default function ErrorDisplay({ message, onRetry }: Props) {
   return (
-    <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 text-center">
-      <p className="text-red-700 text-sm sm:text-base mb-2 sm:mb-3">{message}</p>
+    <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4 text-center">
+      <p className="text-red-700 dark:text-red-300 text-sm sm:text-base mb-2 sm:mb-3">{message}</p>
       {onRetry && (
         <button
           onClick={onRetry}

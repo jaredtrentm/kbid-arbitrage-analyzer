@@ -10,7 +10,7 @@ interface Props {
 export default function ResultsGrid({ items, onSave, savedUrls }: Props) {
   if (items.length === 0) {
     return (
-      <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">
+      <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400 text-sm sm:text-base">
         No items found. Try adjusting your search parameters.
       </div>
     );
@@ -21,7 +21,7 @@ export default function ResultsGrid({ items, onSave, savedUrls }: Props) {
   return (
     <div>
       {profitableCount === 0 && items.length > 0 && (
-        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs sm:text-sm text-yellow-800">
+        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg text-xs sm:text-sm text-yellow-800 dark:text-yellow-300">
           No items meet your profit criteria. Showing all {items.length} analyzed items below (sorted by potential profit).
         </div>
       )}
