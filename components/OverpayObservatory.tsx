@@ -29,6 +29,7 @@ export default function OverpayObservatory() {
   const [sortField, setSortField] = useState<SortField>('overpay_percent');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadOverbidItems();
@@ -49,6 +50,27 @@ export default function OverpayObservatory() {
       setError('Failed to connect to server');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this auction from your logged data?')) return;
+
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/analytics/overbids?id=${id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setItems(items.filter(item => item.id !== id));
+      } else {
+        alert(data.error || 'Failed to delete');
+      }
+    } catch (err) {
+      alert('Failed to delete auction');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -182,7 +204,12 @@ export default function OverpayObservatory() {
       ) : (
         <div className="space-y-2">
           {filteredItems.map((item) => (
-            <OverbidCard key={item.id} item={item} />
+            <OverbidCard
+              key={item.id}
+              item={item}
+              onDelete={handleDelete}
+              isDeleting={deletingId === item.id}
+            />
           ))}
         </div>
       )}
@@ -190,7 +217,7 @@ export default function OverpayObservatory() {
   );
 }
 
-function OverbidCard({ item }: { item: OverbidItem }) {
+function OverbidCard({ item, onDelete, isDeleting }: { item: OverbidItem; onDelete: (id: string) => void; isDeleting: boolean }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 border-l-red-500 p-3 hover:shadow-md transition-shadow">
       <div className="flex gap-3">
@@ -223,14 +250,33 @@ function OverbidCard({ item }: { item: OverbidItem }) {
               </p>
             </div>
 
-            {/* Overpay Badge */}
-            <div className="text-right flex-shrink-0">
-              <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                +{(item.overpay_percent || 0).toFixed(0)}%
+            {/* Overpay Badge + Delete */}
+            <div className="flex items-start gap-2 flex-shrink-0">
+              <div className="text-right">
+                <div className="text-lg font-bold text-red-600 dark:text-red-400">
+                  +{(item.overpay_percent || 0).toFixed(0)}%
+                </div>
+                <div className="text-xs text-red-500 dark:text-red-400">
+                  +${(item.overpay_amount || 0).toFixed(0)} over
+                </div>
               </div>
-              <div className="text-xs text-red-500 dark:text-red-400">
-                +${(item.overpay_amount || 0).toFixed(0)} over
-              </div>
+              <button
+                onClick={() => onDelete(item.id)}
+                disabled={isDeleting}
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                title="Delete this auction"
+              >
+                {isDeleting ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
 
