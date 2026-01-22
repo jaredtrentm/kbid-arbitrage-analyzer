@@ -17,7 +17,7 @@ import { WatchlistInsert } from '@/lib/supabase';
 const BATCH_SIZE = SCRAPE_CONFIG.batchSize;
 
 type AppTab = 'dashboard' | 'analyze' | 'observatory';
-type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing';
+type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing' | 'adding';
 type RiskFilter = 'all' | 'low' | 'medium' | 'high';
 type InterestFilter = 'all' | 'low' | 'medium' | 'high';
 
@@ -124,17 +124,22 @@ export default function Home() {
     setSavedUrls(prev => new Set([...prev, data.item.auctionUrl]));
   };
 
-  const handleScrape = async (params: AnalysisParams) => {
+  const handleScrape = async (params: AnalysisParams, appendMode = false) => {
     setStep('scraping');
     setError(null);
-    setRawItems([]);
-    setAnalyzedItems([]);
-    setBatchIndex(0);
-    setSummary({ totalScraped: 0, totalAnalyzed: 0, totalProfitable: 0, errors: 0 });
+
+    if (!appendMode) {
+      // Fresh start - clear everything
+      setRawItems([]);
+      setAnalyzedItems([]);
+      setBatchIndex(0);
+      setSummary({ totalScraped: 0, totalAnalyzed: 0, totalProfitable: 0, errors: 0 });
+      // Initialize filter sliders from search params
+      setFilterMinProfit(params.profit_min_dollars);
+      setFilterMinROI(params.profit_min_percent);
+    }
+
     setCurrentParams(params);
-    // Initialize filter sliders from search params
-    setFilterMinProfit(params.profit_min_dollars);
-    setFilterMinROI(params.profit_min_percent);
 
     try {
       const response = await fetch('/api/scrape-items', {
@@ -154,23 +159,40 @@ export default function Home() {
         data = JSON.parse(text);
       } catch {
         setError(`Server error: ${text.substring(0, 200)}`);
-        setStep('idle');
+        setStep(appendMode ? 'scraped' : 'idle');
         return;
       }
 
       if (!data.success) {
         setError(data.error || 'Failed to scrape items');
-        setStep('idle');
+        setStep(appendMode ? 'scraped' : 'idle');
         return;
       }
 
-      setRawItems(data.items);
-      setSummary(prev => ({ ...prev, totalScraped: data.totalCount }));
+      if (appendMode) {
+        // Append new items to existing, update batch index to point to new items
+        const existingCount = rawItems.length;
+        setRawItems(prev => [...prev, ...data.items]);
+        setBatchIndex(Math.ceil(existingCount / BATCH_SIZE)); // Point to start of new items
+        setSummary(prev => ({ ...prev, totalScraped: prev.totalScraped + data.totalCount }));
+      } else {
+        setRawItems(data.items);
+        setSummary(prev => ({ ...prev, totalScraped: data.totalCount }));
+      }
+
       setStep('scraped');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to scrape items');
-      setStep('idle');
+      setStep(appendMode ? 'scraped' : 'idle');
     }
+  };
+
+  const handleAddMore = () => {
+    setStep('adding');
+  };
+
+  const handleScrapeMore = async (params: AnalysisParams) => {
+    await handleScrape(params, true);
   };
 
   const handleAnalyzeBatch = async () => {
@@ -407,10 +429,27 @@ export default function Home() {
         {/* Analyze Tab - Original Content */}
         {activeTab === 'analyze' && (
           <>
-        {/* Parameter Form - only show when idle or after reset */}
-        {step === 'idle' && (
+        {/* Parameter Form - show when idle or adding more */}
+        {(step === 'idle' || step === 'adding') && (
           <div className="mb-3 sm:mb-6">
-            <ParameterForm onSubmit={handleScrape} isLoading={false} buttonText="Scrape Items" />
+            {step === 'adding' && analyzedItems.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>{analyzedItems.length}</strong> items already analyzed. New items will be added to your results.
+                </p>
+                <button
+                  onClick={() => setStep('scraped')}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            <ParameterForm
+              onSubmit={step === 'adding' ? handleScrapeMore : handleScrape}
+              isLoading={false}
+              buttonText={step === 'adding' ? "Add Items" : "Scrape Items"}
+            />
           </div>
         )}
 
@@ -467,12 +506,21 @@ export default function Home() {
                     )}
                   </button>
                 )}
+                {!hasMoreBatches && analyzedItems.length > 0 && (
+                  <button
+                    onClick={handleAddMore}
+                    disabled={step === 'analyzing'}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm transition-colors"
+                  >
+                    + Add More Items
+                  </button>
+                )}
                 <button
                   onClick={handleReset}
                   disabled={step === 'analyzing'}
                   className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded font-medium text-gray-700 dark:text-gray-200 text-sm transition-colors"
                 >
-                  New Search
+                  Clear All
                 </button>
               </div>
             </div>
@@ -510,7 +558,7 @@ export default function Home() {
         )}
 
         {/* Results */}
-        {analyzedItems.length > 0 && step !== 'analyzing' && (
+        {analyzedItems.length > 0 && step !== 'analyzing' && step !== 'scraping' && (
           <div>
             {/* AI Disclaimer */}
             <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
