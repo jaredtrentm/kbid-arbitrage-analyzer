@@ -18,10 +18,17 @@ export async function POST(request: NextRequest) {
 
     // Transform items to database format
     const auctionRecords: AnalyzedAuctionInsert[] = items.map(item => {
-      const isOverbid = item.item.currentBid > item.profit.maxBid;
-      const overpayAmount = isOverbid ? item.item.currentBid - item.valuation.estimatedValue : undefined;
-      const overpayPercent = isOverbid && item.valuation.estimatedValue > 0
-        ? ((item.item.currentBid - item.valuation.estimatedValue) / item.valuation.estimatedValue) * 100
+      // Overpay = total cost exceeds value after selling fees (excludes shipping)
+      // This accounts for: K-Bid 10% buyer premium and selling fees only
+      const BUYER_PREMIUM = 1.10;
+      const actualTotalCost = item.item.currentBid * BUYER_PREMIUM;
+      const netValueAfterFees = item.valuation.estimatedValue - item.profit.fees;
+      const isOverbid = actualTotalCost > netValueAfterFees;
+      // Overpay amount is how much over the net value they paid
+      const overpayAmount = isOverbid ? actualTotalCost - netValueAfterFees : undefined;
+      // Overpay percent relative to net value
+      const overpayPercent = isOverbid && netValueAfterFees > 0
+        ? ((actualTotalCost - netValueAfterFees) / netValueAfterFees) * 100
         : undefined;
 
       return {
