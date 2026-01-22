@@ -105,6 +105,52 @@ ${watchlistSummary}
       }
     }
 
+    // Fetch analyzed auctions data (overbids and profitable items)
+    let analyzedContext = '';
+    const { data: overbidItems } = await supabase
+      .from('analyzed_auctions')
+      .select('title, category, current_bid, estimated_value, max_bid, overpay_percent, overpay_amount, auction_url')
+      .eq('is_overbid', true)
+      .order('overpay_percent', { ascending: false })
+      .limit(20);
+
+    const { data: profitableItems } = await supabase
+      .from('analyzed_auctions')
+      .select('title, category, current_bid, estimated_value, actual_profit, actual_roi, auction_url')
+      .eq('is_profitable', true)
+      .order('actual_profit', { ascending: false })
+      .limit(20);
+
+    if ((overbidItems && overbidItems.length > 0) || (profitableItems && profitableItems.length > 0)) {
+      let overbidSummary = '';
+      if (overbidItems && overbidItems.length > 0) {
+        overbidSummary = `### Overbid Items (${overbidItems.length} items where bidders are overpaying)\n` +
+          overbidItems.map((item, i) =>
+            `${i + 1}. "${item.title}" (${item.category})
+   - Current Bid: $${item.current_bid} | Est. Value: $${item.estimated_value} | Max Bid: $${item.max_bid}
+   - Overpaying by: ${item.overpay_percent?.toFixed(0) || 0}% ($${item.overpay_amount?.toFixed(0) || 0})`
+          ).join('\n\n');
+      }
+
+      let profitableSummary = '';
+      if (profitableItems && profitableItems.length > 0) {
+        profitableSummary = `### Profitable Opportunities (${profitableItems.length} items with profit potential)\n` +
+          profitableItems.map((item, i) =>
+            `${i + 1}. "${item.title}" (${item.category})
+   - Current Bid: $${item.current_bid} | Est. Value: $${item.estimated_value}
+   - Potential Profit: $${item.actual_profit?.toFixed(0) || 0} (${item.actual_roi?.toFixed(0) || 0}% ROI)`
+          ).join('\n\n');
+      }
+
+      analyzedContext = `
+## Analyzed Auctions Database
+
+${overbidSummary}
+
+${profitableSummary}
+`;
+    }
+
     const anthropic = new Anthropic();
 
     const systemPrompt = `You are an expert auction arbitrage advisor for K-Bid auctions. You help users find profitable items to resell.
@@ -112,10 +158,11 @@ ${watchlistSummary}
 Your capabilities:
 1. Answer questions about currently displayed search results (if provided)
 2. Answer questions about items in the user's saved watchlist (if provided)
-3. Provide general advice on auction arbitrage, reselling, shipping, pricing, and market trends
-4. Help analyze potential deals and identify risks
-5. Suggest resale channels (eBay, Amazon, Facebook Marketplace, etc.)
-6. Provide tips on shipping costs, packaging, and logistics
+3. Answer questions about analyzed auctions - including overbid items and profitable opportunities from the database
+4. Provide general advice on auction arbitrage, reselling, shipping, pricing, and market trends
+5. Help analyze potential deals and identify risks
+6. Suggest resale channels (eBay, Amazon, Facebook Marketplace, etc.)
+7. Provide tips on shipping costs, packaging, and logistics
 
 Key terms:
 - Max Bid: The highest amount the user should bid while maintaining their profit/ROI requirements
@@ -125,7 +172,7 @@ Key terms:
 - Confidence: How confident the AI is in the valuation estimate
 
 Be concise but helpful. Use bullet points for lists. When discussing specific items, reference them by name. If comparing items, create a clear ranking or table.
-${displayedContext}${watchlistContext}`;
+${displayedContext}${watchlistContext}${analyzedContext}`;
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
