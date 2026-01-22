@@ -1,9 +1,154 @@
--- Supabase Schema for K-Bid Arbitrage Analyzer Watchlist
+-- Supabase Schema for K-Bid Arbitrage Analyzer
 -- Run this in your Supabase SQL Editor (Dashboard > SQL Editor > New Query)
+
+-- ============================================
+-- SETUP INSTRUCTIONS
+-- ============================================
+-- 1. Run this entire script in Supabase SQL Editor
+-- 2. Enable Email Auth in Authentication > Providers
+-- 3. Create your admin account:
+--    a. Go to Authentication > Users > Add user
+--    b. Create user with your email (e.g., jaredtrentm@gmail.com)
+--    c. Set a password
+--    d. After creating, run this SQL to make them admin:
+--
+--       UPDATE public.users
+--       SET role = 'admin'
+--       WHERE email = 'jaredtrentm@gmail.com';
+--
+-- 4. Configure Site URL in Authentication > URL Configuration
+-- 5. Add Supabase keys to .env.local:
+--    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+--    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+-- ============================================
+
+-- ============================================
+-- USERS TABLE (extends Supabase auth.users)
+-- Stores user profile, role, and territory settings
+-- ============================================
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Profile
+  email TEXT NOT NULL UNIQUE,
+  full_name TEXT,
+
+  -- Role
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+
+  -- Territory settings
+  territory_zip TEXT,  -- Center point zip code
+  territory_radius_miles INTEGER DEFAULT 50,  -- Radius in miles
+  territory_lat DECIMAL(10,7),  -- Latitude (auto-populated from zip)
+  territory_lng DECIMAL(10,7),  -- Longitude (auto-populated from zip)
+  territory_name TEXT,  -- Friendly name like "Minneapolis Metro"
+
+  -- License/subscription
+  is_active BOOLEAN DEFAULT TRUE,
+  license_type TEXT DEFAULT 'basic' CHECK (license_type IN ('basic', 'pro', 'exclusive')),
+  license_expires_at TIMESTAMPTZ,
+
+  -- Settings
+  categories_allowed JSONB DEFAULT '[]'::JSONB,  -- Empty = all categories
+  max_items_per_search INTEGER DEFAULT 100
+);
+
+-- Index for email lookup
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+-- Trigger to update updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at
+  BEFORE UPDATE ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS Policies for users table
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own profile
+CREATE POLICY "Users can view own profile" ON users
+  FOR SELECT USING (auth.uid() = id);
+
+-- Users can update their own profile (but not role/territory)
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- Admins can do everything
+CREATE POLICY "Admins have full access" ON users
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Function to handle new user signup
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, full_name)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', '')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to auto-create user profile on signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user();
+
+-- ============================================
+-- ZIP CODE COORDINATES (for distance calculations)
+-- You can populate this with a zip code database
+-- ============================================
+CREATE TABLE IF NOT EXISTS zip_coordinates (
+  zip TEXT PRIMARY KEY,
+  city TEXT,
+  state TEXT,
+  lat DECIMAL(10,7) NOT NULL,
+  lng DECIMAL(10,7) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_zip_state ON zip_coordinates(state);
+
+-- Function to calculate distance between two points (Haversine formula)
+CREATE OR REPLACE FUNCTION calculate_distance_miles(
+  lat1 DECIMAL, lng1 DECIMAL,
+  lat2 DECIMAL, lng2 DECIMAL
+) RETURNS DECIMAL AS $$
+DECLARE
+  r DECIMAL := 3959; -- Earth radius in miles
+  dlat DECIMAL;
+  dlng DECIMAL;
+  a DECIMAL;
+  c DECIMAL;
+BEGIN
+  dlat := RADIANS(lat2 - lat1);
+  dlng := RADIANS(lng2 - lng1);
+  a := SIN(dlat/2)^2 + COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * SIN(dlng/2)^2;
+  c := 2 * ASIN(SQRT(a));
+  RETURN r * c;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- ============================================
+-- WATCHLIST TABLE
+-- ============================================
 
 -- Create the watchlist table
 CREATE TABLE IF NOT EXISTS watchlist (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
@@ -68,12 +213,27 @@ CREATE TRIGGER update_watchlist_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Enable Row Level Security (optional - for multi-user setup)
--- ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security for multi-user setup
+ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
 
--- Create policy for public access (single user setup)
--- If you want multi-user, add a user_id column and modify this policy
--- CREATE POLICY "Allow all operations" ON watchlist FOR ALL USING (true);
+-- Users can only see/modify their own watchlist items
+CREATE POLICY "Users can view own watchlist" ON watchlist
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own watchlist" ON watchlist
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own watchlist" ON watchlist
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own watchlist" ON watchlist
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Admins can see all watchlist items
+CREATE POLICY "Admins can view all watchlist" ON watchlist
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+  );
 
 -- ============================================
 -- ANALYZED AUCTIONS TABLE
@@ -81,6 +241,7 @@ CREATE TRIGGER update_watchlist_updated_at
 -- ============================================
 CREATE TABLE IF NOT EXISTS analyzed_auctions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
 
   -- Item details

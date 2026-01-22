@@ -10,18 +10,23 @@ import AIChat from '@/components/AIChat';
 import ThemeToggle from '@/components/ThemeToggle';
 import Dashboard from '@/components/Dashboard';
 import OverpayObservatory from '@/components/OverpayObservatory';
+import LoginForm from '@/components/LoginForm';
+import AdminUserManager from '@/components/AdminUserManager';
+import { useAuth } from '@/components/AuthProvider';
 import { AnalysisParams, AnalysisResponse, RawKBidItem, AnalyzedItem } from '@/lib/types';
 import { SCRAPE_CONFIG } from '@/lib/config';
 import { WatchlistInsert } from '@/lib/supabase';
 
 const BATCH_SIZE = SCRAPE_CONFIG.batchSize;
 
-type AppTab = 'dashboard' | 'analyze' | 'observatory';
+type AppTab = 'dashboard' | 'analyze' | 'observatory' | 'admin';
 type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing' | 'adding';
 type RiskFilter = 'all' | 'low' | 'medium' | 'high';
 type InterestFilter = 'all' | 'low' | 'medium' | 'high';
 
 export default function Home() {
+  const { user, profile, loading: authLoading, isAdmin, signOut } = useAuth();
+
   // Tab state
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
   const [dashboardKey, setDashboardKey] = useState(0);
@@ -361,6 +366,20 @@ export default function Home() {
     high: analyzedItems.filter(i => i.item.interestLevel === 'high').length,
   };
 
+  // Show loading spinner while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Show login form if not authenticated
+  if (!user) {
+    return <LoginForm />;
+  }
+
   return (
     <main className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-8">
@@ -370,10 +389,18 @@ export default function Home() {
               K-Bid Arbitrage
             </h1>
             <p className="text-xs sm:text-base text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
-              Find profitable auctions with AI valuations
+              {profile?.territory_name || profile?.territory_zip
+                ? `${profile.territory_name || profile.territory_zip} (${profile.territory_radius_miles}mi)`
+                : 'Find profitable auctions with AI valuations'}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block text-right mr-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">{profile?.email}</p>
+              {isAdmin && (
+                <span className="text-xs text-purple-600 dark:text-purple-400">Admin</span>
+              )}
+            </div>
             <ThemeToggle />
             <button
               onClick={() => setShowWatchlist(true)}
@@ -393,6 +420,15 @@ export default function Home() {
               </svg>
               <span className="hidden sm:inline">AI Chat</span>
             </button>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </header>
 
@@ -402,6 +438,7 @@ export default function Home() {
             { id: 'dashboard' as AppTab, label: 'Dashboard', icon: '📊' },
             { id: 'analyze' as AppTab, label: 'Analyze', icon: '🔍' },
             { id: 'observatory' as AppTab, label: 'Overpay Observatory', icon: '👀' },
+            ...(isAdmin ? [{ id: 'admin' as AppTab, label: 'Users', icon: '👥' }] : []),
           ].map(tab => (
             <button
               key={tab.id}
@@ -433,6 +470,11 @@ export default function Home() {
         {/* Overpay Observatory Tab */}
         {activeTab === 'observatory' && (
           <OverpayObservatory key={observatoryKey} />
+        )}
+
+        {/* Admin Tab */}
+        {activeTab === 'admin' && isAdmin && (
+          <AdminUserManager />
         )}
 
         {/* Analyze Tab - Original Content */}
