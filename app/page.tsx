@@ -24,6 +24,8 @@ type InterestFilter = 'all' | 'low' | 'medium' | 'high';
 export default function Home() {
   // Tab state
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+  const [dashboardKey, setDashboardKey] = useState(0);
+  const [observatoryKey, setObservatoryKey] = useState(0);
 
   const [step, setStep] = useState<WorkflowStep>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -403,7 +405,14 @@ export default function Home() {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                if (tab.id === 'dashboard') {
+                  setDashboardKey(k => k + 1);
+                } else if (tab.id === 'observatory') {
+                  setObservatoryKey(k => k + 1);
+                }
+              }}
               className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400'
@@ -418,12 +427,12 @@ export default function Home() {
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
-          <Dashboard />
+          <Dashboard key={dashboardKey} />
         )}
 
         {/* Overpay Observatory Tab */}
         {activeTab === 'observatory' && (
-          <OverpayObservatory />
+          <OverpayObservatory key={observatoryKey} />
         )}
 
         {/* Analyze Tab - Original Content */}
