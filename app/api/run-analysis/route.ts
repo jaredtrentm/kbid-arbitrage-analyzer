@@ -41,7 +41,8 @@ async function logAnalyzedItems(items: AnalyzedItem[]): Promise<void> {
   if (items.length === 0) return;
 
   const auctionRecords: AnalyzedAuctionInsert[] = items.map(item => {
-    const isOverbid = item.item.currentBid > item.profit.maxBid;
+    // Overpay = buyer paid MORE than the estimated market value
+    const isOverbid = item.item.currentBid > item.valuation.estimatedValue;
     const overpayAmount = isOverbid ? item.item.currentBid - item.valuation.estimatedValue : undefined;
     const overpayPercent = isOverbid && item.valuation.estimatedValue > 0
       ? ((item.item.currentBid - item.valuation.estimatedValue) / item.valuation.estimatedValue) * 100

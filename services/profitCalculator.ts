@@ -7,6 +7,9 @@ const SHIPPING_ESTIMATES: Record<string, number> = {
   oversized: 75
 };
 
+// K-Bid buyer's premium (typically 10%, some auctions 13%)
+const KBID_BUYER_PREMIUM_RATE = 0.10;
+
 export function calculateProfit(
   item: ParsedItem,
   valuation: ValuationResult,
@@ -14,38 +17,54 @@ export function calculateProfit(
 ): ProfitAnalysis {
   const estimatedValue = valuation.estimatedValue;
   const shippingEstimate = SHIPPING_ESTIMATES[item.sizeClass] || 15;
-  const feeRate = params.selling_fee_percent / 100;
+  const sellingFeeRate = params.selling_fee_percent / 100;
 
-  // Calculate fees on the sale price
-  const fees = estimatedValue * feeRate;
+  // Calculate selling fees on the sale price
+  const sellingFees = estimatedValue * sellingFeeRate;
 
-  // Net proceeds after fees and shipping
-  const netProceeds = estimatedValue - fees - shippingEstimate;
+  // Net proceeds after selling fees and shipping
+  const netProceeds = estimatedValue - sellingFees - shippingEstimate;
+
+  // Calculate total acquisition cost including K-Bid buyer's premium
+  // Total cost = bid + (bid * buyer_premium_rate)
+  const buyerPremiumMultiplier = 1 + KBID_BUYER_PREMIUM_RATE;
 
   // Calculate max bid to meet profit requirements
-  // Profit = NetProceeds - BuyPrice
-  // ROI = Profit / BuyPrice * 100
+  // Profit = NetProceeds - TotalCost = NetProceeds - (Bid * buyerPremiumMultiplier)
+  // ROI = Profit / TotalCost * 100
 
-  // For minimum dollar profit: maxBid = netProceeds - profit_min_dollars
-  const maxBidForDollarProfit = netProceeds - params.profit_min_dollars;
+  // For minimum dollar profit:
+  // profit_min = netProceeds - (maxBid * multiplier)
+  // maxBid = (netProceeds - profit_min) / multiplier
+  const maxBidForDollarProfit = (netProceeds - params.profit_min_dollars) / buyerPremiumMultiplier;
 
-  // For minimum ROI: ROI = (netProceeds - maxBid) / maxBid * 100
-  // Solving for maxBid: maxBid = netProceeds / (1 + ROI/100)
-  const maxBidForROI = netProceeds / (1 + params.profit_min_percent / 100);
+  // For minimum ROI:
+  // ROI = (netProceeds - (maxBid * multiplier)) / (maxBid * multiplier) * 100
+  // Solving: maxBid = netProceeds / (multiplier * (1 + ROI/100))
+  const maxBidForROI = netProceeds / (buyerPremiumMultiplier * (1 + params.profit_min_percent / 100));
 
   // Take the lower of the two to satisfy both requirements
   const maxBid = Math.max(0, Math.min(maxBidForDollarProfit, maxBidForROI));
 
+  // Calculate total cost at max bid (including buyer's premium)
+  const maxBidTotalCost = maxBid * buyerPremiumMultiplier;
+
   // Calculate expected profit and ROI at max bid (target metrics)
-  const expectedProfit = netProceeds - maxBid;
-  const expectedROI = maxBid > 0 ? (expectedProfit / maxBid) * 100 : 0;
+  const expectedProfit = netProceeds - maxBidTotalCost;
+  const expectedROI = maxBidTotalCost > 0 ? (expectedProfit / maxBidTotalCost) * 100 : 0;
+
+  // Calculate actual total cost at current bid (including buyer's premium)
+  const actualTotalCost = item.currentBid * buyerPremiumMultiplier;
 
   // Calculate actual profit and ROI at current bid
-  const actualProfit = netProceeds - item.currentBid;
-  const actualROI = item.currentBid > 0 ? (actualProfit / item.currentBid) * 100 : 0;
+  const actualProfit = netProceeds - actualTotalCost;
+  const actualROI = actualTotalCost > 0 ? (actualProfit / actualTotalCost) * 100 : 0;
 
-  // Break-even price (where profit = 0)
-  const breakEvenPrice = netProceeds;
+  // Break-even bid (where profit = 0, accounting for buyer's premium)
+  const breakEvenPrice = netProceeds / buyerPremiumMultiplier;
+
+  // Total fees for display (selling fees only - buyer's premium shown separately)
+  const fees = sellingFees;
 
   return {
     maxBid: Math.round(maxBid * 100) / 100,

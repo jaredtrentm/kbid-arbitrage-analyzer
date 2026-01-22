@@ -118,7 +118,13 @@ CREATE TABLE IF NOT EXISTS analyzed_auctions (
   overpay_amount DECIMAL(10,2),  -- how much over value (if overbid)
   overpay_percent DECIMAL(10,2),  -- percentage over value (if overbid)
   is_closed BOOLEAN DEFAULT FALSE,  -- auction has ended
-  auction_status TEXT DEFAULT 'live'  -- 'live', 'closed', 'sold', 'unsold'
+  auction_status TEXT DEFAULT 'live',  -- 'live', 'closed', 'sold', 'unsold'
+
+  -- User bidding tracking
+  user_won BOOLEAN DEFAULT FALSE,  -- user won this auction
+  user_bid_amount DECIMAL(10,2),   -- user's winning bid amount
+  actual_sale_price DECIMAL(10,2), -- actual resale price (if sold)
+  actual_profit_realized DECIMAL(10,2)  -- actual profit after resale
 
   -- Risk assessment
   risk_score TEXT,
