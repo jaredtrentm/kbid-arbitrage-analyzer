@@ -741,8 +741,25 @@ export default function Home() {
 
         {/* No results message */}
         {analyzedItems.length === 0 && !hasMoreBatches && step === 'scraped' && rawItems.length > 0 && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center text-yellow-800 dark:text-yellow-300">
-            All items have been analyzed. No profitable items found.
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-yellow-800 dark:text-yellow-300">
+            <p className="text-center font-medium">No profitable items found in {summary.totalAnalyzed} analyzed items.</p>
+            <p className="text-center text-sm mt-2">
+              Scraped {rawItems.length} items total. Try adjusting profit thresholds or adding another auction URL.
+            </p>
+            <div className="flex justify-center gap-2 mt-3">
+              <button
+                onClick={handleAddMore}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm transition-colors"
+              >
+                + Add More Items
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded font-medium text-gray-700 dark:text-gray-200 text-sm transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
         )}
           </>

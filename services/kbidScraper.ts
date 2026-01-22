@@ -428,19 +428,61 @@ export async function scrapeSingleAuction(auctionUrl: string): Promise<RawKBidIt
       normalizedUrl = `https://www.k-bid.com${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
     }
 
-    // Get all items from the auction (no limit)
-    const items = await getAuctionItems(normalizedUrl, null);
+    // Remove any existing query params and try with showAll parameter
+    const baseUrl = normalizedUrl.split('?')[0];
 
-    console.log(`Found ${items.length} items in auction`);
+    // Try multiple URL variants to get all items
+    const urlsToTry = [
+      `${baseUrl}?showAll=true`,
+      `${baseUrl}?view=all`,
+      `${baseUrl}?perPage=500`,
+      baseUrl
+    ];
+
+    let allItems: RawKBidItem[] = [];
+
+    for (const url of urlsToTry) {
+      console.log(`Trying URL: ${url}`);
+      const items = await getAuctionItems(url, null);
+      console.log(`Found ${items.length} items from ${url}`);
+
+      if (items.length > allItems.length) {
+        allItems = items;
+      }
+
+      // If we found a good number of items, stop trying
+      if (items.length >= 50) break;
+    }
+
+    // Also check for pagination - look for page links and fetch additional pages
+    const html = await fetchWithRetry(baseUrl);
+    const pageMatches = html.match(/[?&]page=(\d+)/gi) || [];
+    const pageNumbers = pageMatches.map(m => parseInt(m.replace(/[?&]page=/i, ''))).filter(n => n > 1);
+    const maxPage = pageNumbers.length > 0 ? Math.max(...pageNumbers) : 1;
+
+    if (maxPage > 1) {
+      console.log(`Found ${maxPage} pages, fetching additional pages...`);
+      for (let page = 2; page <= Math.min(maxPage, 10); page++) {
+        const pageUrl = `${baseUrl}?page=${page}`;
+        console.log(`Fetching page ${page}...`);
+        const pageItems = await getAuctionItems(pageUrl, null);
+        console.log(`Found ${pageItems.length} items on page ${page}`);
+        allItems = [...allItems, ...pageItems];
+      }
+    }
+
+    console.log(`Total found: ${allItems.length} items in auction`);
 
     // Deduplicate by URL
     const seen = new Set<string>();
-    const uniqueItems = items.filter(item => {
+    const uniqueItems = allItems.filter(item => {
       const key = item.url || item.text.substring(0, 100);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
+
+    console.log(`After deduplication: ${uniqueItems.length} unique items`);
 
     return uniqueItems;
   } catch (error) {
