@@ -8,17 +8,23 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import Watchlist from '@/components/Watchlist';
 import AIChat from '@/components/AIChat';
 import ThemeToggle from '@/components/ThemeToggle';
+import Dashboard from '@/components/Dashboard';
+import OverpayObservatory from '@/components/OverpayObservatory';
 import { AnalysisParams, AnalysisResponse, RawKBidItem, AnalyzedItem } from '@/lib/types';
 import { SCRAPE_CONFIG } from '@/lib/config';
 import { WatchlistInsert } from '@/lib/supabase';
 
 const BATCH_SIZE = SCRAPE_CONFIG.batchSize;
 
+type AppTab = 'dashboard' | 'analyze' | 'observatory';
 type WorkflowStep = 'idle' | 'scraping' | 'scraped' | 'analyzing';
 type RiskFilter = 'all' | 'low' | 'medium' | 'high';
 type InterestFilter = 'all' | 'low' | 'medium' | 'high';
 
 export default function Home() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+
   const [step, setStep] = useState<WorkflowStep>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -366,6 +372,41 @@ export default function Home() {
           </div>
         </header>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mb-4 border-b border-gray-200 dark:border-gray-700">
+          {[
+            { id: 'dashboard' as AppTab, label: 'Dashboard', icon: '📊' },
+            { id: 'analyze' as AppTab, label: 'Analyze', icon: '🔍' },
+            { id: 'observatory' as AppTab, label: 'Overpay Observatory', icon: '👀' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <span className="hidden sm:inline mr-1">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <Dashboard />
+        )}
+
+        {/* Overpay Observatory Tab */}
+        {activeTab === 'observatory' && (
+          <OverpayObservatory />
+        )}
+
+        {/* Analyze Tab - Original Content */}
+        {activeTab === 'analyze' && (
+          <>
         {/* Parameter Form - only show when idle or after reset */}
         {step === 'idle' && (
           <div className="mb-3 sm:mb-6">
@@ -655,6 +696,8 @@ export default function Home() {
           <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center text-yellow-800 dark:text-yellow-300">
             All items have been analyzed. No profitable items found.
           </div>
+        )}
+          </>
         )}
       </div>
 
