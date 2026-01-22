@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [insightsRefreshing, setInsightsRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -108,6 +109,26 @@ export default function Dashboard() {
     }
   };
 
+  const clearAllData = async () => {
+    if (!confirm('Clear all analyzed auction data? This cannot be undone.')) return;
+    setClearing(true);
+    try {
+      const response = await fetch('/api/analytics/clear', { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        setStats(null);
+        setInsights([]);
+        loadDashboard();
+      } else {
+        alert('Failed to clear data: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Failed to clear data');
+    } finally {
+      setClearing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -145,6 +166,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Clear Button */}
+      {hasData && (
+        <div className="flex justify-end">
+          <button
+            onClick={clearAllData}
+            disabled={clearing}
+            className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 rounded transition-colors disabled:opacity-50"
+          >
+            {clearing ? 'Clearing...' : 'Clear All Data'}
+          </button>
+        </div>
+      )}
+
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard
