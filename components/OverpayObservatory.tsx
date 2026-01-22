@@ -78,15 +78,15 @@ export default function OverpayObservatory() {
       return multiplier * ((a[sortField] || 0) - (b[sortField] || 0));
     });
 
-  // Calculate summary stats
+  // Calculate summary stats (handle null values safely)
   const totalOverbid = items.length;
   const avgOverpayPercent = items.length > 0
-    ? items.reduce((sum, i) => sum + i.overpay_percent, 0) / items.length
+    ? items.reduce((sum, i) => sum + (i.overpay_percent || 0), 0) / items.length
     : 0;
   const maxOverpay = items.length > 0
-    ? Math.max(...items.map(i => i.overpay_percent))
+    ? Math.max(...items.map(i => i.overpay_percent || 0))
     : 0;
-  const totalOverpayAmount = items.reduce((sum, i) => sum + i.overpay_amount, 0);
+  const totalOverpayAmount = items.reduce((sum, i) => sum + (i.overpay_amount || 0), 0);
 
   if (loading) {
     return (
@@ -219,17 +219,17 @@ function OverbidCard({ item }: { item: OverbidItem }) {
                 {item.title}
               </a>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {item.category} • {item.bid_count} bids • {item.bidder_count} bidders
+                {item.category || 'Uncategorized'} • {item.bid_count || 0} bids • {item.bidder_count || 0} bidders
               </p>
             </div>
 
             {/* Overpay Badge */}
             <div className="text-right flex-shrink-0">
               <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                +{item.overpay_percent.toFixed(0)}%
+                +{(item.overpay_percent || 0).toFixed(0)}%
               </div>
               <div className="text-xs text-red-500 dark:text-red-400">
-                +${item.overpay_amount.toFixed(0)} over
+                +${(item.overpay_amount || 0).toFixed(0)} over
               </div>
             </div>
           </div>

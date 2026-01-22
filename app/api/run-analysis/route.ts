@@ -10,6 +10,32 @@ import { supabase, AnalyzedAuctionInsert } from '@/lib/supabase';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
+// Determine if auction is closed based on end date
+function getAuctionStatus(endDateStr?: string): { isClosed: boolean; status: 'live' | 'closed' | 'sold' | 'unsold' } {
+  if (!endDateStr) {
+    return { isClosed: false, status: 'live' };
+  }
+
+  try {
+    // Parse various date formats (e.g., "Jan 21, 2025 7:00 PM", "1/21/2025")
+    const endDate = new Date(endDateStr);
+    const now = new Date();
+
+    if (isNaN(endDate.getTime())) {
+      return { isClosed: false, status: 'live' };
+    }
+
+    const isClosed = endDate < now;
+    // If closed and has bids, assume sold (we can refine this later with actual sale data)
+    return {
+      isClosed,
+      status: isClosed ? 'closed' : 'live'
+    };
+  } catch {
+    return { isClosed: false, status: 'live' };
+  }
+}
+
 // Log analyzed items to database for market intelligence
 async function logAnalyzedItems(items: AnalyzedItem[]): Promise<void> {
   if (items.length === 0) return;
@@ -20,6 +46,9 @@ async function logAnalyzedItems(items: AnalyzedItem[]): Promise<void> {
     const overpayPercent = isOverbid && item.valuation.estimatedValue > 0
       ? ((item.item.currentBid - item.valuation.estimatedValue) / item.valuation.estimatedValue) * 100
       : undefined;
+
+    // Determine auction status
+    const { isClosed, status } = getAuctionStatus(item.item.auctionEndDate);
 
     return {
       title: item.item.title,
@@ -47,6 +76,8 @@ async function logAnalyzedItems(items: AnalyzedItem[]): Promise<void> {
       is_profitable: item.meetsCriteria,
       overpay_amount: overpayAmount,
       overpay_percent: overpayPercent,
+      is_closed: isClosed,
+      auction_status: status,
       risk_score: item.resale.riskScore,
       risk_reasoning: item.resale.riskReasoning,
       recommended_channel: item.resale.recommendedChannel,

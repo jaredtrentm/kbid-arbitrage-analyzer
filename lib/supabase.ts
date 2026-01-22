@@ -106,6 +106,8 @@ export interface AnalyzedAuction {
   is_profitable: boolean;
   overpay_amount?: number;
   overpay_percent?: number;
+  is_closed: boolean;
+  auction_status: 'live' | 'closed' | 'sold' | 'unsold';
   risk_score?: string;
   risk_reasoning?: string;
   recommended_channel?: string;
@@ -141,6 +143,8 @@ export interface AnalyzedAuctionInsert {
   is_profitable: boolean;
   overpay_amount?: number;
   overpay_percent?: number;
+  is_closed?: boolean;
+  auction_status?: 'live' | 'closed' | 'sold' | 'unsold';
   risk_score?: string;
   risk_reasoning?: string;
   recommended_channel?: string;
