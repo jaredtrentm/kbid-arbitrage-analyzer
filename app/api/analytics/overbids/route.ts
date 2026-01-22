@@ -45,6 +45,8 @@ export async function GET() {
       .from('analyzed_auctions')
       .select('id, title, category, current_bid, estimated_value, overpay_amount, overpay_percent, bid_count, bidder_count, interest_level, auction_url, image_url, created_at, auction_end_date')
       .eq('is_overbid', true)
+      .gt('overpay_amount', 0)
+      .gt('overpay_percent', 0)
       .order('created_at', { ascending: false })
       .limit(100);
 
