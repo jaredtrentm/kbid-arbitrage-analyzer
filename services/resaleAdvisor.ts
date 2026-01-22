@@ -27,7 +27,8 @@ Return ONLY valid JSON:
   "recommendedChannel": "eBay/Amazon/Facebook Marketplace/Craigslist/OfferUp/Specialty Site",
   "riskScore": "low/medium/high",
   "riskReasoning": "brief explanation of risks",
-  "tips": ["tip1", "tip2", "tip3"]
+  "tips": ["tip1", "tip2", "tip3"],
+  "quickTake": "One-line assessment (e.g., 'Strong flip - high demand category' or 'Skip - overpriced for condition')"
 }
 
 Consider:
@@ -55,7 +56,8 @@ Consider:
       recommendedChannel: parsed.recommendedChannel || 'eBay',
       riskScore: parsed.riskScore || 'medium',
       riskReasoning: parsed.riskReasoning || 'Unable to assess risk',
-      tips: parsed.tips || []
+      tips: parsed.tips || [],
+      quickTake: parsed.quickTake
     };
 
   } catch (error) {

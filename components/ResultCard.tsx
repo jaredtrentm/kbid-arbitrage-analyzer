@@ -48,6 +48,22 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
   // Card border color based on meetsCriteria
   const cardBorder = meetsCriteria ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-gray-300 dark:border-l-gray-600';
 
+  // Determine quickTake sentiment based on keywords
+  const getQuickTakeSentiment = (text?: string): 'positive' | 'negative' | 'neutral' => {
+    if (!text) return 'neutral';
+    const lower = text.toLowerCase();
+    const positiveWords = ['strong', 'good', 'great', 'excellent', 'flip', 'profit', 'demand', 'hot', 'buy', 'recommend', 'opportunity'];
+    const negativeWords = ['skip', 'avoid', 'pass', 'overpriced', 'risky', 'low demand', 'saturated', 'difficult', 'loss'];
+    if (positiveWords.some(word => lower.includes(word))) return 'positive';
+    if (negativeWords.some(word => lower.includes(word))) return 'negative';
+    return 'neutral';
+  };
+
+  const quickTakeSentiment = getQuickTakeSentiment(resale.quickTake);
+  const quickTakeColor = quickTakeSentiment === 'positive' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30' :
+                         quickTakeSentiment === 'negative' ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30' :
+                         'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30';
+
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden ${cardBorder}`}>
       {/* Image section */}
@@ -86,6 +102,13 @@ export default function ResultCard({ data, onSave, isSaved = false }: Props) {
             )}
           </div>
         </div>
+
+        {/* Quick Take */}
+        {resale.quickTake && (
+          <div className={`px-2 py-1.5 rounded text-xs sm:text-sm mb-2 ${quickTakeColor}`}>
+            <span className="font-medium">AI:</span> {resale.quickTake}
+          </div>
+        )}
 
         {/* Price grid - 2x2 on mobile */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs sm:text-sm mb-2 sm:mb-3">

@@ -63,6 +63,7 @@ export interface ResaleAdvice {
   riskScore: 'low' | 'medium' | 'high';
   riskReasoning: string;
   tips: string[];
+  quickTake?: string;
 }
 
 export interface AnalyzedItem {

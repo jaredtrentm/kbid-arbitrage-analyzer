@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import CategoryDeepDiveModal from './CategoryDeepDiveModal';
 
 interface DashboardStats {
   totalAnalyzed: number;
@@ -35,13 +36,28 @@ interface CategoryPerformance {
   opportunity_score: number;
 }
 
+interface MarketInsight {
+  id: string;
+  insight_type: 'trend' | 'alert' | 'recommendation' | 'pattern';
+  title: string;
+  description: string;
+  severity: 'info' | 'warning' | 'opportunity' | 'critical';
+  category?: string;
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<MarketInsight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsRefreshing, setInsightsRefreshing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
   useEffect(() => {
     loadDashboard();
+    loadInsights();
   }, []);
 
   const loadDashboard = async () => {
@@ -59,6 +75,36 @@ export default function Dashboard() {
       setError('Failed to connect to server');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const response = await fetch('/api/insights');
+      const data = await response.json();
+      if (data.success) {
+        setInsights(data.insights);
+      }
+    } catch (err) {
+      console.error('Failed to load insights:', err);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const refreshInsights = async () => {
+    setInsightsRefreshing(true);
+    try {
+      const response = await fetch('/api/insights', { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        setInsights(data.insights);
+      }
+    } catch (err) {
+      console.error('Failed to refresh insights:', err);
+    } finally {
+      setInsightsRefreshing(false);
     }
   };
 
@@ -161,7 +207,14 @@ export default function Dashboard() {
           {hasData && stats.categoryPerformance.length > 0 ? (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {stats.categoryPerformance.map((cat) => (
-                <CategoryBar key={cat.category} category={cat} />
+                <CategoryBar
+                  key={cat.category}
+                  category={cat}
+                  onClick={() => {
+                    setSelectedCategory(cat.category);
+                    setCategoryModalOpen(true);
+                  }}
+                />
               ))}
             </div>
           ) : (
@@ -172,28 +225,54 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* AI Insights Placeholder */}
+      {/* AI Market Insights */}
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-purple-600 dark:text-purple-400 text-xl">AI</span>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Market Insights
-          </h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-purple-600 dark:text-purple-400 text-xl">AI</span>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              Market Insights
+            </h3>
+          </div>
+          {hasData && (
+            <button
+              onClick={refreshInsights}
+              disabled={insightsRefreshing}
+              className="px-3 py-1 text-xs font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded transition-colors disabled:opacity-50"
+            >
+              {insightsRefreshing ? 'Generating...' : 'Refresh'}
+            </button>
+          )}
         </div>
-        {hasData ? (
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
-            {stats.totalOverbid > stats.totalProfitable
-              ? `Buyers are currently overpaying more often than finding deals. Consider listing items now - the market is hot.`
-              : stats.totalProfitable > 0
-              ? `Found ${stats.totalProfitable} profitable opportunities. Best categories for flipping: ${stats.categoryPerformance.slice(0, 2).map(c => c.category).join(', ') || 'analyzing...'}`
-              : 'Continue analyzing auctions to generate market insights.'}
-          </p>
+
+        {insightsLoading ? (
+          <div className="space-y-2">
+            <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded animate-pulse w-3/4"></div>
+            <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded animate-pulse w-1/2"></div>
+            <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded animate-pulse w-2/3"></div>
+          </div>
+        ) : insights.length > 0 ? (
+          <div className="space-y-3">
+            {insights.map((insight) => (
+              <InsightCard key={insight.id} insight={insight} />
+            ))}
+          </div>
         ) : (
           <p className="text-gray-500 dark:text-gray-400 text-sm">
             Analyze auctions to generate AI-powered market insights.
           </p>
         )}
       </div>
+
+      {/* Category Deep Dive Modal */}
+      <CategoryDeepDiveModal
+        category={selectedCategory || ''}
+        isOpen={categoryModalOpen}
+        onClose={() => {
+          setCategoryModalOpen(false);
+          setSelectedCategory(null);
+        }}
+      />
     </div>
   );
 }
@@ -249,7 +328,46 @@ function ActivityItem({ item }: { item: RecentActivityItem }) {
   );
 }
 
-function CategoryBar({ category }: { category: CategoryPerformance }) {
+function InsightCard({ insight }: { insight: MarketInsight }) {
+  const severityStyles = {
+    info: 'border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/20',
+    warning: 'border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-900/20',
+    opportunity: 'border-l-green-500 bg-green-50/50 dark:bg-green-900/20',
+    critical: 'border-l-red-500 bg-red-50/50 dark:bg-red-900/20',
+  };
+
+  const typeIcons = {
+    trend: '📈',
+    alert: '⚠️',
+    recommendation: '💡',
+    pattern: '🔄',
+  };
+
+  return (
+    <div className={`border-l-4 rounded-r p-3 ${severityStyles[insight.severity]}`}>
+      <div className="flex items-start gap-2">
+        <span className="text-sm">{typeIcons[insight.insight_type]}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 text-sm">
+              {insight.title}
+            </h4>
+            {insight.category && (
+              <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400">
+                {insight.category}
+              </span>
+            )}
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+            {insight.description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoryBar({ category, onClick }: { category: CategoryPerformance; onClick?: () => void }) {
   // Opportunity score ranges from -100 to 100
   // Positive = more profitable items, negative = more overbid items
   const score = category.opportunity_score;
@@ -257,7 +375,13 @@ function CategoryBar({ category }: { category: CategoryPerformance }) {
   const barWidth = Math.min(Math.abs(score), 100);
 
   return (
-    <div className="p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+    <div
+      className="p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+    >
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           {category.category}
