@@ -74,16 +74,21 @@ export default function ParameterForm({ onSubmit, isLoading, buttonText = 'Run A
             onChange={(e) => setUseSingleAuction(e.target.checked)}
             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Scrape specific auction URL</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Scrape specific auction or search URL</span>
         </label>
         {useSingleAuction && (
-          <input
-            type="url"
-            placeholder="https://www.k-bid.com/auction/281702"
-            value={params.single_auction_url || ''}
-            onChange={(e) => setParams(p => ({ ...p, single_auction_url: e.target.value }))}
-            className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
-          />
+          <div className="mt-2">
+            <input
+              type="url"
+              placeholder="Auction or search URL..."
+              value={params.single_auction_url || ''}
+              onChange={(e) => setParams(p => ({ ...p, single_auction_url: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Examples: <span className="font-mono">k-bid.com/auction/281702</span> or <span className="font-mono">k-bid.com/auction/list?search_phrase_inline=bicycle</span>
+            </p>
+          </div>
         )}
       </div>
 

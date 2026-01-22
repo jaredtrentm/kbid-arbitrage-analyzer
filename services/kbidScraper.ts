@@ -412,14 +412,200 @@ async function getAuctionItems(auctionUrl: string, auctionEndDateStr: string | n
   }
 }
 
+// Check if URL is a search results URL
+function isSearchUrl(url: string): boolean {
+  return url.includes('search_phrase_inline=') ||
+         url.includes('/auction/list?') ||
+         url.includes('/auction/search?') ||
+         url.includes('/items/category/');
+}
+
+// Extract items from search results HTML
+function extractSearchResultItems(html: string): RawKBidItem[] {
+  const items: RawKBidItem[] = [];
+  const seen = new Set<string>();
+
+  // Extract image URLs helper
+  const extractImage = (content: string): string | undefined => {
+    const imgMatch = content.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
+    if (imgMatch) {
+      let imgUrl = imgMatch[1];
+      if (!imgUrl.startsWith('http')) {
+        imgUrl = imgUrl.startsWith('/') ? `https://www.k-bid.com${imgUrl}` : `https://www.k-bid.com/${imgUrl}`;
+      }
+      if (!imgUrl.includes('placeholder') && !imgUrl.includes('icon') && !imgUrl.includes('logo')) {
+        return imgUrl;
+      }
+    }
+    const dataSrcMatch = content.match(/data-src="([^"]+)"/i);
+    if (dataSrcMatch) {
+      let imgUrl = dataSrcMatch[1];
+      if (!imgUrl.startsWith('http')) {
+        imgUrl = imgUrl.startsWith('/') ? `https://www.k-bid.com${imgUrl}` : `https://www.k-bid.com/${imgUrl}`;
+      }
+      return imgUrl;
+    }
+    return undefined;
+  };
+
+  // Pattern 1: Look for item links with format /auction/ID/item/N
+  const itemLinkRegex = /href="(\/auction\/\d+\/item\/\d+[^"]*)"/gi;
+  let match;
+
+  while ((match = itemLinkRegex.exec(html)) !== null) {
+    const itemPath = match[1].split('?')[0];
+    if (seen.has(itemPath)) continue;
+    seen.add(itemPath);
+
+    // Get context around this link (3000 chars before and after)
+    const start = Math.max(0, match.index - 3000);
+    const end = Math.min(html.length, match.index + 3000);
+    const context = html.substring(start, end);
+
+    const fullUrl = `https://www.k-bid.com${itemPath}`;
+    const textContent = context.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Skip closed items
+    if (isClosed(textContent)) continue;
+
+    // Extract title - look for nearby text
+    let title = '';
+    const h4Match = context.match(/<h4[^>]*>(?:<a[^>]*>)?([^<]+)/i);
+    if (h4Match) title = h4Match[1].trim();
+    if (!title) {
+      const altMatch = context.match(/alt="[^"]*image:\s*([^"]+)"/i);
+      if (altMatch) title = altMatch[1].trim();
+    }
+    if (!title) {
+      // Try to extract from title attribute
+      const titleAttrMatch = context.match(/title="([^"]+)"/i);
+      if (titleAttrMatch) title = titleAttrMatch[1].trim();
+    }
+
+    // Extract bid info
+    let currentBid = extractCurrentBidFromHtml(context);
+    if (currentBid === null) {
+      currentBid = extractCurrentBid(textContent);
+    }
+
+    const imageUrl = extractImage(context);
+    const bidCount = extractBidCount(textContent);
+    const bidderCount = extractBidderCount(textContent);
+
+    // Extract auction end date from context
+    const { str: auctionEndDateStr } = parseAuctionEndTime(textContent);
+
+    let itemText = title || textContent.substring(0, 200);
+    if (currentBid !== null) {
+      itemText += ` Current Bid: $${currentBid.toFixed(2)}`;
+    }
+
+    if (itemText.length > 3) {
+      items.push({
+        text: itemText,
+        url: fullUrl,
+        imageUrl,
+        auctionEndDate: auctionEndDateStr || undefined,
+        currentBid: currentBid || undefined,
+        bidCount: bidCount || undefined,
+        bidderCount: bidderCount || undefined
+      });
+    }
+  }
+
+  return items;
+}
+
+// Scrape search results page - returns items matching search criteria
+export async function scrapeSearchResults(searchUrl: string, maxItems: number): Promise<RawKBidItem[]> {
+  try {
+    console.log(`Scraping search results: ${searchUrl}`);
+
+    // Normalize URL
+    let normalizedUrl = searchUrl;
+    if (!normalizedUrl.startsWith('http')) {
+      normalizedUrl = `https://www.k-bid.com${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
+    }
+
+    const allItems: RawKBidItem[] = [];
+    let currentPage = 1;
+    const maxPages = 5; // Limit pages to avoid too many requests
+
+    // Parse the URL to preserve search params
+    const urlObj = new URL(normalizedUrl);
+
+    while (currentPage <= maxPages) {
+      // Add or update page parameter
+      urlObj.searchParams.set('page', String(currentPage));
+      const pageUrl = urlObj.toString();
+
+      console.log(`Fetching search page ${currentPage}: ${pageUrl}`);
+      const html = await fetchWithRetry(pageUrl);
+
+      // Extract items from this page
+      const pageItems = extractSearchResultItems(html);
+      console.log(`Found ${pageItems.length} items on page ${currentPage}`);
+
+      if (pageItems.length === 0) {
+        console.log('No more items found, stopping pagination');
+        break;
+      }
+
+      allItems.push(...pageItems);
+
+      // Check if we have enough items
+      if (maxItems > 0 && allItems.length >= maxItems) {
+        console.log(`Reached max items limit (${maxItems})`);
+        break;
+      }
+
+      // Check for next page - look for pagination links
+      const hasNextPage = html.includes(`page=${currentPage + 1}`) ||
+                         html.includes(`page="${currentPage + 1}"`) ||
+                         html.match(/Next\s*[<>]/i);
+
+      if (!hasNextPage) {
+        console.log('No next page found, stopping pagination');
+        break;
+      }
+
+      currentPage++;
+
+      // Small delay between pages to be respectful
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    // Deduplicate by URL
+    const seen = new Set<string>();
+    const uniqueItems = allItems.filter(item => {
+      const key = item.url || item.text.substring(0, 100);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    console.log(`Total unique items from search: ${uniqueItems.length}`);
+
+    return maxItems > 0 ? uniqueItems.slice(0, maxItems) : uniqueItems;
+  } catch (error) {
+    console.error('Search results scraping error:', error);
+    throw new Error(`Failed to scrape search results: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 // Scrape a single auction by URL - returns all items without limit
 export async function scrapeSingleAuction(auctionUrl: string): Promise<RawKBidItem[]> {
   try {
     console.log(`Scraping single auction: ${auctionUrl}`);
 
-    // Validate URL format
+    // Check if this is actually a search URL
+    if (isSearchUrl(auctionUrl)) {
+      return scrapeSearchResults(auctionUrl, 0); // 0 = no limit
+    }
+
+    // Validate URL format for single auction
     if (!auctionUrl.includes('k-bid.com/auction/')) {
-      throw new Error('Invalid K-Bid auction URL. Expected format: https://www.k-bid.com/auction/12345');
+      throw new Error('Invalid K-Bid URL. Expected auction URL (e.g., https://www.k-bid.com/auction/12345) or search URL (e.g., https://www.k-bid.com/auction/list?search_phrase_inline=bicycle)');
     }
 
     // Normalize URL
